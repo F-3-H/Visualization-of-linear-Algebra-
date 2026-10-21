@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>线性代数 · 可视化与文章</title>
+<meta name="description" content="用眼睛看的那部分线性代数：两篇正文、四个可交互项目。全部离线自足，双击即开。">
+<style>
+  :root{
+    --bg:#161618; --paper:#1e1e20; --panel:#252526;
+    --border:#3a3a3d; --text:#e9e9ec; --dim:#a0a0a8;
+    --accent:#00adb5; --accent-soft:rgba(0,173,181,.12);
+    --strong:#ffffff; --code-bg:#181818;
+    --warn:#ff9f43; --ok:#51cf66;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;
+    line-height:1.95; font-size:16.5px; padding:56px 22px 96px;
+  }
+  .wrap{max-width:1120px;margin:0 auto;}
+  .eyebrow{
+    display:inline-block;font-size:12px;letter-spacing:.18em;color:var(--accent);
+    border:1px solid var(--accent);border-radius:999px;padding:4px 14px;margin-bottom:22px;
+  }
+  h1{font-size:clamp(26px,4vw,38px);font-weight:600;letter-spacing:.01em;line-height:1.35;margin-bottom:14px;}
+  .lede{
+    color:var(--dim);border-left:2px solid var(--accent);padding-left:16px;margin:18px 0 30px;
+    font-size:15.5px;line-height:1.9;
+  }
+  .lede b{color:var(--text);font-weight:600;}
+  p{margin:0 0 18px;}
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:18px;margin:34px 0 10px;
+  }
+  .card{
+    display:block;text-decoration:none;color:inherit;
+    background:var(--paper);border:1px solid var(--border);border-radius:14px;
+    padding:22px 22px 20px;transition:border-color .18s,background .18s;
+  }
+  .card:hover{border-color:var(--accent);background:var(--panel);}
+  .card .kind{
+    font-size:11.5px;letter-spacing:.16em;color:var(--accent);margin-bottom:10px;
+  }
+  .card h2{font-size:19px;font-weight:600;line-height:1.5;margin-bottom:10px;}
+  .card p{color:var(--dim);font-size:14.5px;line-height:1.85;margin:0 0 14px;}
+  .card .go{font-size:14px;color:var(--accent);}
+  .card .go span{opacity:.6;}
+  .sub{
+    margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);
+    font-size:13.5px;color:var(--dim);
+  }
+  .sub a{color:var(--dim);text-decoration:none;border-bottom:1px dotted var(--border);}
+  .sub a:hover{color:var(--accent);border-color:var(--accent);}
+  h3{
+    font-size:15px;font-weight:600;letter-spacing:.04em;color:var(--text);
+    margin:44px 0 14px;padding-left:10px;border-left:3px solid var(--accent);
+  }
+  .notes{
+    background:var(--paper);border:1px solid var(--border);border-radius:14px;padding:22px 24px;
+  }
+  .notes p{font-size:14.5px;color:var(--dim);margin:0 0 14px;}
+  .notes p:last-child{margin-bottom:0;}
+  .notes b{color:var(--text);font-weight:600;}
+  code{
+    background:var(--code-bg);border:1px solid var(--border);border-radius:5px;
+    padding:1px 6px;font-size:13.5px;color:var(--accent);
+    font-family:"Cascadia Mono",Consolas,monospace;
+  }
+  footer{
+    margin-top:52px;padding-top:22px;border-top:1px solid var(--border);
+    color:var(--dim);font-size:13.5px;line-height:1.9;
+  }
+  footer a{color:var(--accent);text-decoration:none;}
+  footer a:hover{border-bottom:1px solid var(--accent);}
+  @media (max-width:640px){
+    body{padding:40px 16px 72px;font-size:16px;}
+    .grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">LINEAR ALGEBRA · 可视化与文章</div>
+  <h1>用眼睛看的那部分线性代数</h1>
+
+  <div class="lede">
+    这一套讲的是一件很窄的事：<b>一捆数被一张表作用之后会怎么样</b>。
+    两篇正文把它从头走了一遍；四个项目让读者自己动手把它试出来。
+    <b>正文里的每一张图都是从项目里同一套数学算出来的</b>，所以你可以拿着正文的结论回到项目里去核。
+  </div>
+
+  <p>
+    全部离线自足：没有 CDN、没有外链字体、没有构建步骤。每个页面双击就能单独打开，
+    也可以在仓库里逐级走。要读文章，从两篇「正文」进；想动手，任何一个「项目」都行。
+  </p>
+
+  <div class="grid">
+
+    <a class="card" href="项目/文章.html">
+      <div class="kind">正文 · 第 11 篇</div>
+      <h2>一捆数与一张表</h2>
+      <p>一捆数就是一支箭头；一张表管的是"每一列被送到哪儿"。拿着这两句话，整张平面上的箭头都能被摁成别的箭头。</p>
+      <div class="go">从头读起 <span>→</span></div>
+      <div class="sub">配套项目五个视角：<a href="项目/index.html">向量工场 / 矩阵作用台 / 先后有别 / 特征方向 / 行列式与反作用</a></div>
+    </a>
+
+    <a class="card" href="控制项目/文章.html">
+      <div class="kind">正文 · 第 12 篇</div>
+      <h2>让会倒的东西站住</h2>
+      <p>一根立在掌心的棍子。它非倒不可——除非从外面接一根线回来。两处塌缩：落在一条线上还救得回来，落在另一条上就没了。</p>
+      <div class="go">从头读起 <span>→</span></div>
+      <div class="sub">配套项目五个视角：<a href="控制项目/index.html">站不住的点 / 内因改不动 / 把线接回来 / 把倍数搬家 / 搬不动的时候</a></div>
+    </a>
+
+    <a class="card" href="复合项目/index.html">
+      <div class="kind">项目 · 四视角</div>
+      <h2>复合与顺序</h2>
+      <p>把"摁一下"当成一段路，连着摁两下就是一段两截的路。两张表连着摁，合起来还是一张表——可这次作用的先后能不能换？</p>
+      <div class="go">进去拖两个头 <span>→</span></div>
+      <div class="sub">视角：两列的去向 / 连着摁两次 / 顺序有关系吗 / 括号摆哪儿都一样</div>
+    </a>
+
+    <a class="card" href="span-lab/index.html">
+      <div class="kind">工具 · 双工作区</div>
+      <h2>张成实验室</h2>
+      <p>一组箭头，能走出多大的空间？二维、三维各一套工作区，写下任意几个箭头，看它们张成的是一个点、一条直线、一张平面，还是整个空间。</p>
+      <div class="go">写下几个箭头 <span>→</span></div>
+      <div class="sub">附加：整数组合点阵、组合探针、子空间方程与秩</div>
+    </a>
+
+  </div>
+
+  <h3>这一套的共同约定</h3>
+  <div class="notes">
+    <p>
+      <b>一捆数写成列向量</b>，两张表写成 <code>A=[a,b;c,d]</code>。<b>A·u</b> 表示表 A 作用在一捆数 u 上，<b>A·B</b> 表示表 A 作用在表 B 上（先摁 B 再摁 A）。
+      角度一律用 0 偏角、ω 角速度；悬挂系统的 m、k、c 与第 10 篇同一套。
+    </p>
+    <p>
+      <b>每个视角都带互证与反例。</b>互证是"两条互不相通的路给出同一个答案"；反例是"亲手撞到这个说法在哪儿不成立"。
+      只给正例的演示是在教教条，所以每个项目里都能找到一处"这里它会失败"。
+    </p>
+    <p>
+      <b>结论都可复算。</b>每个项目里都有一份核心数学抽出来单独跑的自检脚本，以及一份"故意把故障装回去、看断言抓不抓得住"的反向对照。
+      正文里的数字，你都可以在这些脚本里重新算一遍。
+    </p>
+  </div>
+
+  <footer>
+    语言：简体中文 · 核心数学在各项目的 <code>assets/core.js</code>，
+    自检在各项目的 <code>tests/</code> 与 <code>tools/</code> 下。
+    <br>
+    作者：F-3-H · 仓库：<a href="https://github.com/F-3-H/Visualization-of-linear-Algebra-">Visualization-of-linear-Algebra-</a>
+  </footer>
+
+</div>
+</body>
+</html>

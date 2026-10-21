@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 01 · 站不住的点 —— 让会倒的东西站住</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">让会倒的东西站住 · 视角 01<small>站不住的点：两个倍数，一个跑一个回</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--purple)"></i>相流：一捆数接下来走的路</span>
+      <span><i class="dot" style="background:var(--red)"></i>往外的那条线（倍数为正）</span>
+      <span><i class="dot" style="background:var(--v)"></i>回来的那条线（倍数为负）</span>
+      <span style="margin-left:auto">拖动灰点换一捆数试试</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">棍子歪着的时候，它"接下来往哪走"也写得出表：一行是角怎么变（角的变化率就是角速度），另一行是角速度怎么变（重力把它往外拉）。这一站只做一件事——读这张表。</p>
+
+    <div class="ctl">
+      <label>阻尼 c（棍子转起来有多大阻力）<output id="vc">0.20</output></label>
+      <input type="range" id="sc" min="0" max="3" step="0.05" value="0.2">
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>怎么读这张图：</b>横着是"歪了多少"（偏角），竖着是"歪得多快"（角速度）；一个点就是一捆数，也就是棍子此刻的样子。<br><b>大多数点都要绕一圈才走，唯独两条线是直的</b>：沿着它们，棍子只是单纯地"越歪越快"或"越转越慢"，方向一点不变——这就是上一篇那条"变了又没变的方向"。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；a＝g/L；c 阻尼；λ 倍数。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var R = 2.6;
+  var view = D.create(canvas, { range: R, pad: 34 });
+
+  /* 相图有必须原地对读的刻度（两条特征方向线、离原点的远近），
+     所以这里画框固定，不让它跟着内容走——取景与对象只能有一个动。 */
+  var state = { a: 1, c: 0.2, seed: L.vec(0.5, 1.5) };
+  var drag = false;
+
+  /* 画框固定（图里有必须原地对读的两条特征方向线与刻度），于是反过来约束对象：
+     拖到画框边上就停住，并在读数里说明"已经拖到边上"。取景与对象只能有一个动；
+     放任对象出框，"读数里量得出、图上却看不见"，这条上一次已经栽过一回了。
+     夹取本身在共享层（view.clamp），三个画框固定的视角共用同一条规矩。 */
+  function A() { return L.stickMat(state.a, state.c); }
+
+  function path(M, s0, T, N) {
+    var pts = [], limit = R * 1.55;
+    for (var i = 0; i <= N; i++) {
+      var p = L.apply(L.expm2(M, T * i / N), s0);
+      pts.push(p);
+      if (Math.max(Math.abs(p.x), Math.abs(p.y)) > limit) break;
+    }
+    return pts;
+  }
+
+  function draw() {
+    var M = A(), e = L.eigen(M);
+    view.setRange(R);
+    view.clear();
+    view.grid({ step: 0.5 });
+
+    /* 相流：一圈初始点各自走出去 */
+    var seeds = [], k, ang;
+    for (k = 0; k < 14; k++) {
+      ang = Math.PI * 2 * k / 14;
+      seeds.push(L.vec(R * 0.7 * Math.cos(ang), R * 0.7 * Math.sin(ang)));
+    }
+    seeds.push(L.vec(0.4, 0.4), L.vec(-0.4, 0.15), L.vec(0.15, -0.5), L.vec(-0.3, -0.3));
+    seeds.forEach(function (s0) {
+      view.polyline(path(M, s0, 2.4, 96), { color: D.C.purple, width: 1.4, alpha: 0.7 });
+      view.dot(s0, { color: D.C.ghost, r: 2.6 });
+    });
+
+    /* 两条特征方向线：一变一不变的那两条 */
+    var feats = e.type === "real"
+      ? [{ l: e.l1, v: e.v1 }, { l: e.l2, v: e.v2 }]
+      : [];
+    feats.forEach(function (f, idx) {
+      if (!f.v) return;
+      var out = f.l > 0;
+      var col = out ? D.C.red : D.C.v;
+      var tip = L.scale(f.v, R * 1.02);
+      view.line(L.scale(f.v, -R * 1.02), tip, { color: col, width: 1.3, dash: [7, 5], alpha: (out ? 0.55 : 0.5) + (idx ? -0.1 : 0) });
+      view.arrow(L.scale(f.v, R * 0.30), tip, { color: col, width: 2 });
+      view.text(tip, "λ = " + (f.l > 0 ? "+" : "") + f.l.toFixed(2), {
+        color: col, dx: -6, dy: out ? 14 : -14, align: out ? "right" : "left", bold: true
+      });
+    });
+
+    /* 当前这一捆数：拖得动 */
+    var sp = path(M, state.seed, 2.6, 110);
+    view.polyline(sp, { color: D.C.u, width: 2.6, alpha: 0.95 });
+    view.dot(state.seed, { color: D.C.u, r: 6 });
+    view.text(state.seed, "这一捆", { color: D.C.u, dx: -10, dy: -12, align: "right" });
+
+    var lam = e.type === "real" ? [e.l1, e.l2] : null;
+    var verdict = L.verdict(M);
+    document.getElementById("vc").textContent = state.c.toFixed(2);
+    document.getElementById("ro").innerHTML =
+      "θ′ = ω\n" +
+      "ω′ = " + state.a.toFixed(2) + "·θ − " + state.c.toFixed(2) + "·ω\n" +
+      (lam
+        ? "两个倍数：λ₁ ＝ " + (lam[0] > 0 ? "+" : "") + lam[0].toFixed(2) +
+          "，λ₂ ＝ " + (lam[1] > 0 ? "+" : "") + lam[1].toFixed(2) + "\n"
+        : "两个倍数是一对复数：" + (e.re > 0 ? "+" : "") + e.re.toFixed(2) + " ± " + e.im.toFixed(2) + "i\n") +
+      "放大倍数 det ＝ " + L.det(M).toFixed(2) + "\n" +
+      (verdict === "跑"
+        ? "<span class='bad'>判词：跑</span>——有一个方向，自己越走越远\n"
+        : (verdict === "回"
+          ? "<span class='ok'>判词：回</span>——每个方向都自己缩回来\n"
+          : "<span class='warn'>判词：绕</span>——不肯停，也不跑掉\n")) +
+      "<span class='ok'>互证：</span>沿那两条线放一个初始点，轨迹是<b>直线</b>；别处放，都是弯的。因为在那条线上 A·v ＝ λ·v，走了 t 之后就是 e^(λt)·v，始终没离开这条线\n" +
+      (lam
+        ? "<span class='warn'>反例：</span>把灰点拖到青色那条线上（λ₂ ＝ " + lam[1].toFixed(2) + "）——它自己就回来了。可见「站不住」并不是「怎么动都跑掉」，而是「有一个方向跑掉」"
+        : "") + "\n" +
+      "画框 ± " + R.toFixed(1) + "　" +
+      (state.clamped
+        ? "<span class='warn'>已经拖到画框边上了</span>：画框得让那两条特征方向线留在原地，不能跟着这一捆走，只好请你停在这儿"
+        : "拖动灰点换一捆数；拖到边上它会停住");
+  }
+
+  function toWorld(ev) {
+    var r = canvas.getBoundingClientRect();
+    return L.vec(view.wx(ev.clientX - r.left), view.wy(ev.clientY - r.top));
+  }
+  canvas.addEventListener("pointerdown", function (ev) {
+    var r = canvas.getBoundingClientRect();
+    var hx = view.sx(state.seed.x), hy = view.sy(state.seed.y);
+    if (Math.hypot(ev.clientX - r.left - hx, ev.clientY - r.top - hy) < 16) {
+      drag = true; canvas.setPointerCapture(ev.pointerId);
+    }
+  });
+  canvas.addEventListener("pointermove", function (ev) {
+    if (!drag) return;
+    var p = toWorld(ev);
+    if (!isFinite(p.x) || !isFinite(p.y)) return;
+    var c = view.clamp(p, 0.12);
+    state.clamped = L.dist(c, p) > 1e-9;
+    state.seed = L.vec(c.x, c.y);
+    draw();
+  });
+  canvas.addEventListener("pointerup", function () { if (drag) { drag = false; draw(); } });
+
+  var sc = document.getElementById("sc");
+  sc.addEventListener("input", function () { state.c = parseFloat(sc.value) || 0; draw(); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

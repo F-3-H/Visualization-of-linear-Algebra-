@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="张成实验室：写下几个向量，看它们能张成直线、平面还是整个空间。二维与三维可交互可视化。">
+  <meta name="color-scheme" content="dark">
+  <title>张成 · Span Lab | 一组向量能走出多大的空间</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    window.__BOOT_ERRORS__ = [];
+    window.__reportBootError = function (message) {
+      window.__BOOT_ERRORS__.push(message);
+      var el = document.getElementById('boot-error');
+      if (!el) return;
+      el.hidden = false;
+      el.textContent += (el.textContent ? '\n' : '') + message;
+    };
+    window.addEventListener('error', function (e) {
+      window.__reportBootError('ERROR: ' + e.message + ' @ ' + (e.filename || '') + ':' + (e.lineno || '') + ':' + (e.colno || ''));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      window.__reportBootError('REJECTION: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)));
+    });
+  </script>
+  <script defer src="js/span-math.js"></script>
+  <script defer src="js/canvas-utils.js"></script>
+  <script defer src="js/scene2d.js"></script>
+  <script defer src="js/scene3d.js"></script>
+  <script defer src="js/app.js"></script>
+  <script defer src="js/selftest.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="wrap">
+      <div class="header-top">
+        <span class="eyebrow">LINEAR ALGEBRA · SPAN</span>
+        <button class="ghost-btn" id="btn-about" type="button">方法说明</button>
+      </div>
+      <div class="title-main">
+        <h1>张成 <span class="latin">SPAN LAB</span></h1>
+        <p class="lede">一组向量，能走出多大的空间？<br>写下方向与数量，点一下，看它们把空间铺到第几维。</p>
+      </div>
+      <div class="formula-block">span(v₁, …, vₙ) = { Σ cᵢvᵢ | cᵢ ∈ ℝ }</div>
+    </div>
+  </header>
+
+  <main class="worlds" id="worlds">
+    <article class="world" id="world-2" data-dim="2"></article>
+    <article class="world" id="world-3" data-dim="3"></article>
+  </main>
+
+  <footer class="page-foot">
+    <p>输入坐标，点「展现张成空间」。整数组合的点阵是"所有线性组合"的可见骨架。</p>
+    <p class="foot-meta">纯本地运行 · 无外部依赖 · 二维 / 三维</p>
+  </footer>
+
+  <div class="modal" id="about-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="about-title">
+      <button class="modal-close" id="btn-about-close" type="button" aria-label="关闭">×</button>
+      <p class="eyebrow">方法说明</p>
+      <h2 id="about-title">张成，是一组向量能走到的全部地方</h2>
+      <p class="modal-lede">取一组向量 <span class="math">v₁ … vₙ</span>，把所有可能的线性组合
+        <span class="math">c₁v₁ + … + cₙvₙ</span> 收集起来，得到的集合就是它们的张成
+        <span class="math">span(v₁, …, vₙ)</span>。它一定过原点，因为所有系数取 0 就回到原点。</p>
+
+      <div class="case-grid">
+        <div class="case">
+          <span class="case-tag">二维</span>
+          <h3>0 维 · 一个点</h3>
+          <p>只有零向量（或没有向量）。没有方向可走。</p>
+        </div>
+        <div class="case">
+          <span class="case-tag">二维</span>
+          <h3>1 维 · 一条直线</h3>
+          <p>所有向量共线。再多写几个，也只是同一条线。</p>
+        </div>
+        <div class="case">
+          <span class="case-tag">二维</span>
+          <h3>2 维 · 整个平面</h3>
+          <p>只要有两个不共线的方向，平面上的每一点都能被组合出来。</p>
+        </div>
+        <div class="case">
+          <span class="case-tag">三维</span>
+          <h3>2 维 · 一张平面</h3>
+          <p>三维里的两个独立方向铺出一张过原点的平面；第三个向量若落在面内，不增加维数。</p>
+        </div>
+        <div class="case">
+          <span class="case-tag">三维</span>
+          <h3>3 维 · 整个空间</h3>
+          <p>三个方向不共面时，它们撑满整个 ℝ³。行列式不为零是这件事的代数判据。</p>
+        </div>
+        <div class="case">
+          <span class="case-tag">通用</span>
+          <h3>向量多，不等于维数高</h3>
+          <p>张成的维数等于这组向量的秩。多出来的向量若能被前面的向量表示，就不会扩大空间。</p>
+        </div>
+      </div>
+
+      <h3 class="modal-h">怎么读这个页面</h3>
+      <ul class="modal-list">
+        <li><b>坐标</b>支持整数、小数、分数，例如 <span class="math">2</span>、<span class="math">-1.5</span>、<span class="math">3/4</span>。</li>
+        <li><b>向量个数</b>可以随时增删。第一次点「展现张成空间」后，修改坐标会即时更新；再点一次会重演展开动画。</li>
+        <li><b>点阵</b>画的是整数系数组合 <span class="math">i v₁ + j v₂ (i, j ∈ ℤ)</span>，它们必须全部落在张成空间里——这是"张成"最直观的见证。</li>
+        <li><b>拖拽</b>二维平移、三维旋转；<b>滚轮</b>缩放；双击画布或点「重置视角」回到默认视角。</li>
+        <li><b>组合探针</b>打开后，可以手动拖动每个系数，观察组合点是否始终停留在张成空间内。</li>
+      </ul>
+
+      <p class="modal-note">页面完全离线运行，不加载任何外部脚本或字体。</p>
+    </div>
+  </div>
+
+  <pre id="selftest-report" hidden></pre>
+  <div id="boot-error" hidden style="position:fixed;left:12px;bottom:12px;z-index:99;max-width:80vw;max-height:40vh;overflow:auto;padding:10px 12px;border-radius:8px;background:#2a0b0e;color:#ffd7d7;border:1px solid #7f1d1d;font:11px/1.5 Consolas,monospace;white-space:pre-wrap"></div>
+</body>
+</html>

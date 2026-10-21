@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 02 · 一张表 —— 线性代数基础</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">线性代数基础 · 视角 02<small>一张表：把"摁一下"写下来</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--u)"></i>作用前的 u</span>
+      <span><i class="dot" style="background:var(--purple)"></i>作用后的 M·u</span>
+      <span><i class="dot" style="background:rgba(124,92,191,.38)"></i>单位正方形与它的像（面积 1 → <b id="lgArea">1.000</b>）</span>
+      <span><i class="dot" style="background:var(--ghost)"></i>没被作用的底板网格</span>
+      <span style="margin-left:auto">四个数定一张表；u 的坐标可以直接填，也可以拖绿箭头的头</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">复数乘法早就演示过"摁一下"：转个角度、缩个比例。把这种摁法写成四个数，就是一整张表。表作用在一捆数上，得到另一捆数。</p>
+
+    <div class="ctl">
+      <label>这张表 M（两列分别去哪）</label>
+      <div class="matgrid">
+        <input type="number" id="ma" step="0.1" value="1.4">
+        <input type="number" id="mb" step="0.1" value="0.6">
+        <input type="number" id="mc" step="0.1" value="0.3">
+        <input type="number" id="md" step="0.1" value="0.9">
+      </div>
+    </div>
+
+    <div class="ctl">
+      <label>这一捆数 u（横着、竖着各多少）</label>
+      <div class="vecgrid">
+        <input type="number" id="ux" step="0.1" value="1.6">
+        <input type="number" id="uy" step="0.1" value="1.1">
+      </div>
+    </div>
+
+    <div class="btnrow compact" id="presets"></div>
+
+    <div class="btnrow">
+      <button id="tGrid" class="on">看网格被摁成什么样</button>
+      <button id="tCol" class="on">高亮两列的去向</button>
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>怎么读一张表：</b>底板上横着的那支箭头送到第一列画的地方，竖着的那支送到第二列——整张表就是"两支底板箭头各自去哪"。<br><b>两块颜色不是"格子"：</b>绿边正方形面积 1，紫边是它的像，面积比＝放大倍数。<b>u 不要求落在方块里</b>，填到外面、填成 (0, 0) 都不算错：方块讲"放大多少"，箭头讲"这一捆被送到哪"。</p>
+    <p class="note" id="zeroNote" style="display:none;border-color:var(--red)"><b>边界：</b>四个数全是 0——所有箭头都被送到原点。摁得越狠，丢掉的东西越多；这一摁，什么都反不出来了。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：M 一张表；u 一捆数；M·u 作用结果。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 4.2, pad: 34 });
+
+  var state = { M: L.mat(1.4, 0.6, 0.3, 0.9), u: L.vec(1.6, 1.1), grid: true, col: true };
+  var drag = false, frozenRange = null;
+
+  /* ---- 取景：画框要装得下这一站要说的事 ----
+   * 表由读者填，四个数一改，"第二列去哪、单位正方形被摁成什么、M·u 落在哪"
+   * 都会跑到画框外——写死范围就必然出现"读数量出 (8.2, 8.2)、图上却什么都没有"。
+   * 取景算法本身在共享层（assets/draw.js 的 D.fitRange / D.gridStep），
+   * 免得每个视角各写一套、各漏一处；这里只声明"哪些东西必须看得见"。 */
+  function fitRange(M, u) {
+    return D.fitRange([
+      u,                                        // 作用前的 u
+      L.apply(M, u),                            // M·u：这一站的结论
+      L.apply(M, L.vec(1, 0)), L.apply(M, L.vec(0, 1)),   // 两列的去向
+      L.apply(M, L.vec(1, 1))                   // 单位正方形的像（最远的那个角）
+    ]);
+  }
+
+  var presetNames = ["identity", "stretchX", "rotate90", "rotScale", "shear", "flip", "squash", "diag21", "sym"];
+  var box = document.getElementById("presets");
+  presetNames.forEach(function (k) {
+    var b = document.createElement("button");
+    b.textContent = L.PRESETS[k].label;
+    b.addEventListener("click", function () {
+      state.M = L.PRESETS[k].m;
+      syncInputs(); draw();
+    });
+    box.appendChild(b);
+  });
+
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+  function readMatrix() { state.M = L.mat(num("ma"), num("mb"), num("mc"), num("md")); }
+  function readU() { state.u = L.vec(num("ux"), num("uy")); }
+  ["ma", "mb", "mc", "md"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () { readMatrix(); draw(); });
+  });
+  /* u 也手填：它和 M 一样是这一站的输入。只让"拖"会把读者挡在门外——
+     想直接对读 u=(3, −2) 与 u=(−1, 4) 各自被送到哪，拖是拖不准的。 */
+  ["ux", "uy"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () { readU(); draw(); });
+  });
+  function syncU() {
+    document.getElementById("ux").value = +state.u.x.toFixed(2);
+    document.getElementById("uy").value = +state.u.y.toFixed(2);
+  }
+  function syncInputs() {
+    document.getElementById("ma").value = +state.M.a.toFixed(2);
+    document.getElementById("mb").value = +state.M.b.toFixed(2);
+    document.getElementById("mc").value = +state.M.c.toFixed(2);
+    document.getElementById("md").value = +state.M.d.toFixed(2);
+    syncU();
+  }
+  function toggle(id, key) {
+    var el = document.getElementById(id);
+    el.addEventListener("click", function () { state[key] = !state[key]; el.classList.toggle("on", state[key]); draw(); });
+  }
+  toggle("tGrid", "grid"); toggle("tCol", "col");
+
+  function toWorld(e) {
+    var r = canvas.getBoundingClientRect();
+    return { x: view.wx(e.clientX - r.left), y: view.wy(e.clientY - r.top) };
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    /* 抓取半径不能写成世界距离常量。u 是读者可填的输入，画框又由 u 与 M·u 决定：
+       u 填得越大画框越大，同样 0.5 个世界单位在屏幕上越短——u 填到 (60, 40)
+       时那个半径只剩几个像素，读者的鼠标永远抓不住箭头的头。改按屏幕像素判定，
+       手感就与画框大小无关。 */
+    var r = canvas.getBoundingClientRect();
+    var hx = view.sx(state.u.x), hy = view.sy(state.u.y);
+    if (Math.hypot(e.clientX - r.left - hx, e.clientY - r.top - hy) < 14) {
+      drag = true; frozenRange = view.range();   // 拖动期间画框不动
+      canvas.setPointerCapture(e.pointerId);
+    }
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var p = toWorld(e);
+    /* 吸附步长同理按画框折算：画框小的时候（u 与 M·u 都贴近原点）若还用固定的
+       0.1，一格要跳屏幕上几十像素，读者落不到想要的数。 */
+    var snap = view.range() / 40;
+    state.u = L.vec(Math.round(p.x / snap) * snap, Math.round(p.y / snap) * snap);
+    syncU(); draw();
+  });
+  canvas.addEventListener("pointerup", function () {
+    if (drag) { drag = false; frozenRange = null; draw(); }  // 松手后再重新取景
+  });
+
+  function drawGridLines(M, color, dash, alpha, R, step) {
+    var i, n = Math.floor(R / step), ctx = view.ctx;
+    ctx.save();
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    if (dash) ctx.setLineDash(dash);
+    ctx.globalAlpha = alpha == null ? 1 : alpha;
+    ctx.beginPath();
+    for (i = -n; i <= n; i++) {
+      var v = i * step;
+      var a = L.apply(M, L.vec(-R, v)), b = L.apply(M, L.vec(R, v));
+      ctx.moveTo(view.sx(a.x), view.sy(a.y)); ctx.lineTo(view.sx(b.x), view.sy(b.y));
+      var c = L.apply(M, L.vec(v, -R)), d = L.apply(M, L.vec(v, R));
+      ctx.moveTo(view.sx(c.x), view.sy(c.y)); ctx.lineTo(view.sx(d.x), view.sy(d.y));
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw() {
+    var M = state.M, u = state.u;
+    var R = frozenRange == null ? fitRange(M, u) : frozenRange;
+    view.setRange(R);
+    var step = D.gridStep(R);
+
+    view.clear(); view.grid({ step: step });
+    var Mu = L.apply(M, u);
+    var d = L.det(M);
+
+    if (state.grid) {
+      if (Math.abs(d) < 1e-9) {
+        // 被摁扁了：整张网格都映射到同一条线上。逐条画会叠成一根实线、
+        // 看着像一支粗向量；这里只画那一条，并在读数里说明它是什么。
+        var col = L.norm(L.vec(M.a, M.c)) >= L.norm(L.vec(M.b, M.d)) ? L.vec(M.a, M.c) : L.vec(M.b, M.d);
+        if (L.norm(col) > 1e-9) {
+          var dir = L.normalize(col);
+          var reach = view.reach() * 1.6;   // 画满画框：长度取自取景，不写死
+          view.ctx.save();
+          view.ctx.globalAlpha = 0.45;
+          view.line(L.scale(dir, -reach), L.scale(dir, reach), { color: D.C.purple, width: 2 });
+          view.ctx.restore();
+        }
+      } else {
+        drawGridLines(M, D.C.purple, null, 0.28, Math.ceil(R * 1.25 / step) * step, step);
+      }
+    }
+
+    if (state.col) {
+      var e1 = L.vec(1, 0), e2 = L.vec(0, 1);
+      view.arrow(L.vec(0, 0), e1, { color: D.C.ghost, width: 1.4, dash: [3, 3] });
+      view.arrow(L.vec(0, 0), e2, { color: D.C.ghost, width: 1.4, dash: [3, 3] });
+      view.arrow(L.vec(0, 0), L.apply(M, e1), { color: D.C.sum, width: 2.4 });
+      view.arrow(L.vec(0, 0), L.apply(M, e2), { color: D.C.v, width: 2.4 });
+      view.text(L.apply(M, e1), "第一列", { color: D.C.sum, dx: 8, dy: -6 });
+      view.text(L.apply(M, e2), "第二列", { color: D.C.v, dx: 8, dy: 14 });
+    }
+
+    // 单位正方形与它的像：面积比的现场
+    var sq = [L.vec(0, 0), L.vec(1, 0), L.vec(1, 1), L.vec(0, 1)];
+    var sqImg = sq.map(function (p) { return L.apply(M, p); });
+    /* 画序与线型都跟着箭头那一套：作用后的像画实线（紫），作用前的单位正方形
+       画虚线（绿）压在上面。单位表下两块完全重合——若两块都是实线，
+       读者看到的就只是"一个紫框"，会把它当成底板上的一个格子；虚线叠上去，
+       "两块重合"才看得出来，也就不容易再问"箭头怎么跑到格子外面去了"。 */
+    view.poly(sqImg, { fill: "rgba(124,92,191,0.10)", stroke: D.C.purple, width: 1.8 });
+    view.poly(sq, { fill: "rgba(14,159,110,0.07)", stroke: D.C.u, width: 1.4, dash: [5, 4] });
+    /* 但面积这个数不上画布：试过把"面积 1 / 像的面积 x.xxx"标在两块的形心，
+       文字得垫底衬才压得住箭头，而底衬画在最后会把结论圆点整个擦掉
+       （"手填·小表"那一档就真被擦了，圆点在画布上找不到）。数值改放在图例里，
+       与画布同一行、不会被任何图形压住。 */
+    document.getElementById("lgArea").textContent = Math.abs(d).toFixed(3);
+
+    /* 画序：先画作用后的 M·u（实线），再把作用前的 u 用虚线压在上面。
+       两张表恰好不动 u 时（单位表最常见）两支箭头完全重合——若把实线画在上面，
+       读者看到的就只是"一支箭头挂两个标签"，看不出表到底动没动。 */
+    view.arrow(L.vec(0, 0), Mu, { color: D.C.purple, width: 3 });
+    view.arrow(L.vec(0, 0), u, { color: D.C.u, width: 2, dash: [5, 5] });
+    view.dot(Mu, { color: D.C.purple, r: 5 });
+    view.text(Mu, "M·u（作用后）", { color: D.C.purple, dx: 10, dy: 6, bold: true });
+    view.text(u, "u（作用前）", { color: D.C.u, dx: -8, dy: -12, align: "right" });
+
+    // 互证：图上平行四边形面积（鞋带公式） vs det
+    function shoelace(pts) {
+      var s = 0;
+      for (var i = 0; i < pts.length; i++) {
+        var p = pts[i], q = pts[(i + 1) % pts.length];
+        s += p.x * q.y - q.x * p.y;
+      }
+      return Math.abs(s) / 2;
+    }
+    var ro = document.getElementById("ro");
+    /* 两支箭头重合时必须说出来：单位表（M＝I）下"表动没动"在图上无处可看，
+       读数若也只写两个相同的坐标，读者只能猜。这里把"重合"这件事点名。 */
+    var isId = L.eqm(M, L.ID());
+    /* u 是零捆时 M·u 当然等于 u，但那是"没有东西可送"，不是"表恰好不动它"——
+       零向量必须排除，否则读者把 u 填成 (0, 0) 会读到"落在长度不变的方向上"这句错话。 */
+    var nz = L.norm(u) > 1e-6;
+    var still = nz && L.dist(u, Mu) <= 0.01 * L.norm(u);
+    ro.innerHTML =
+      "M = [ " + M.a.toFixed(2) + "  " + M.b.toFixed(2) + " ]\n" +
+      "    [ " + M.c.toFixed(2) + "  " + M.d.toFixed(2) + " ]\n" +
+      "u = (" + u.x.toFixed(2) + ", " + u.y.toFixed(2) + ") → M·u = (" + Mu.x.toFixed(2) + ", " + Mu.y.toFixed(2) + ")\n" +
+      "画框 ±" + R + "（自动取景）\n" +
+      (!nz
+        ? "<span class='warn'>零捆：</span>u 是 (0, 0)——没有东西可送，M·u 当然也是 (0, 0)，图上两支箭头都缩成一个点。换一捆不为零的 u 试试。\n"
+        : (isId
+          ? "<span class='warn'>单位表：</span>四个数是 1、0、0、1——摁下去什么都不动。M·u 与 u 完全重合（图上绿虚线叠在紫实线上、紫点盖在最上面），像也与单位正方形重合，面积倍数 1。\n"
+          : (still
+            ? "<span class='warn'>这张表恰好不动 u：</span>M·u ＝ u，两支箭头完全重合——u 正落在「长度不变的方向」上（第 04 站的主题）。换一捆不在这条线上的 u 试试。\n"
+            : ""))) +
+      "<span class='ok'>互证：</span>鞋带公式量出的像面积 " + shoelace(sqImg).toFixed(3) +
+      " ＝ 1 × " + d.toFixed(3) + "（＝ det M）" +
+      (Math.abs(d) < 1e-9
+        ? "\n<span class='warn'>det = 0：</span>整张网格塌成一条线（紫），面积倍数 0——按这一下，平面被压扁成一条线"
+        : "");
+    document.getElementById("zeroNote").style.display = L.isZero(M) ? "block" : "none";
+  }
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  syncInputs(); view.resize(); draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 02 · 内因改不动 —— 让会倒的东西站住</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">让会倒的东西站住 · 视角 02<small>内因改不动：参数怎么调，那个正号还在</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:rgba(214,69,69,.5)"></i>自己跑掉（有一个正倍数）</span>
+      <span><i class="dot" style="background:rgba(14,116,144,.5)"></i>自己回来（两个都是负倍数）</span>
+      <span><i class="dot" style="background:var(--grid)"></i>这段没有意义</span>
+      <span style="margin-left:auto">横轴＝阻尼 c，纵轴＝棍子"往外拉的劲" a</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">上一篇留下的说法是：想改系统的脾气，就改它的内因参数。这一站来试着改一改——把棍子换长、换短，给它加阻力，看看能不能让它别倒。</p>
+
+    <div class="ctl">
+      <label>a＝棍子"往外拉的劲"（越长劲越小）<output id="va">1.00</output></label>
+      <input type="range" id="sa" min="-2" max="2.5" step="0.05" value="1">
+    </div>
+    <div class="ctl">
+      <label>c＝阻尼（转起来有多大阻力）<output id="vc">0.20</output></label>
+      <input type="range" id="sc" min="0" max="3" step="0.05" value="0.2">
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>这张图是算出来的，不是画的：</b>每一个格子取一组 (c, a)，算一遍它的两个倍数，按最大那个实部的正负上色。<br><b>a ＝ 0 是一条分界线</b>：上面红、下面青。a 其实就是"棍子朝哪边倒"——朝上立着（a 为正），它非倒不可；朝下挂着（a 为负），它自己会荡回来。阻尼再大也改不了红青之分。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；a＝g/L；c 阻尼；λ 倍数。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 3, pad: 34 });
+  var state = { a: 1, c: 0.2 };
+
+  /* 参数地图：每个格子重算一遍"最大实部"，按正负上色。
+     格子的粗细是像素级的，所以这张图不取景、不缩放——它是标尺本身。 */
+  function drawMap() {
+    var ctx = view.ctx, W = view.width(), H = view.height();
+    var cols = 72, rows = 48, i, j;
+    var cw = W / cols, chh = H / rows;
+    for (i = 0; i < cols; i++) {
+      for (j = 0; j < rows; j++) {
+        var cc = view.wx(i * cw + cw / 2), aa = view.wy(j * chh + chh / 2);
+        if (cc < 0 || cc > 3.5) continue;   // c 不能是负的；3.5 以外拖不到
+        var mr = L.maxReal(L.stickMat(aa, cc));
+        ctx.fillStyle = mr > 0.005 ? "rgba(214,69,69,0.20)"
+                      : (mr < -0.005 ? "rgba(14,116,144,0.22)" : "rgba(160,165,175,0.22)");
+        ctx.fillRect(i * cw, j * chh, cw + 1, chh + 1);
+      }
+    }
+    /* c 小于 0 的那半边：阻尼不能是负的，明说 */
+    var zeroX = view.sx(0);
+    ctx.save();
+    ctx.fillStyle = D.C.grid;
+    ctx.fillRect(0, 0, zeroX, H);
+    ctx.restore();
+  }
+
+  function draw() {
+    var M = L.stickMat(state.a, state.c);
+    view.clear();
+    drawMap();
+    view.grid({ step: 0.5 });
+
+    /* a ＝ 0 的那条分界线 */
+    view.line(L.vec(-4.4, 0), L.vec(3.5, 0), { color: D.C.ink, width: 1.6, dash: [7, 5] });
+    /* c ＝ 0 的那条（阻尼为零） */
+    view.line(L.vec(0, -2.9), L.vec(0, 2.9), { color: D.C.axis, width: 1.2 });
+
+    var e = L.eigen(M), mr = L.maxReal(M), verdict = L.verdict(M);
+    var px = view.sx(state.c), py = view.sy(state.a);
+    view.ctx.save();
+    view.ctx.beginPath();
+    view.ctx.arc(px, py, 7, 0, Math.PI * 2);
+    view.ctx.fillStyle = D.C.ink;
+    view.ctx.fill();
+    view.ctx.strokeStyle = D.C.panel; view.ctx.lineWidth = 2; view.ctx.stroke();
+    view.ctx.restore();
+    view.text(L.vec(state.c, state.a), "你在这一格", { color: D.C.ink, dx: 12, dy: -14, bold: true });
+
+    view.text(L.vec(1.4, -1.9), "c 不能是负的", { color: D.C.inkSoft });
+    view.text(L.vec(0.15, 2.65), "a ＞ 0：非倒不可", { color: D.C.red, bold: true });
+    view.text(L.vec(0.15, -2.65), "a ＜ 0：自己会回来", { color: D.C.v, bold: true });
+
+    document.getElementById("va").textContent = state.a.toFixed(2);
+    document.getElementById("vc").textContent = state.c.toFixed(2);
+    var lam = e.type === "real" ? [e.l1, e.l2] : null;
+    document.getElementById("ro").innerHTML =
+      "a ＝ " + state.a.toFixed(2) + "　c ＝ " + state.c.toFixed(2) + "\n" +
+      (lam ? "两个倍数：λ₁ ＝ " + (lam[0] > 0 ? "+" : "") + lam[0].toFixed(2) +
+             "，λ₂ ＝ " + (lam[1] > 0 ? "+" : "") + lam[1].toFixed(2) + "\n"
+           : "两个倍数：" + (e.re > 0 ? "+" : "") + e.re.toFixed(2) + " ± " + e.im.toFixed(2) + "i\n") +
+      "最大实部 ＝ " + (mr > 0 ? "+" : "") + mr.toFixed(3) + "\n" +
+      (verdict === "跑"
+        ? "<span class='bad'>判词：跑</span>——有一个方向自己跑掉\n"
+        : (verdict === "回"
+          ? "<span class='ok'>判词：回</span>——每个方向都自己回来\n"
+          : "<span class='warn'>判词：绕</span>——不肯停，也不跑掉\n")) +
+      "<span class='ok'>互证：</span>红色区域的上边界正好落在 a ＝ 0 上。这不是画上去的，是算出来的：" +
+      "det(A) ＝ " + L.det(M).toFixed(2) + "，而 det ＝ −a；det 为负就意味着两个倍数一正一负，正的那个跑不掉\n" +
+      (state.a > 0
+        ? "<span class='warn'>反例／边界：</span>把 a 拖到 0 以下试试——它立刻变青。同一根棍子，只差 a 的符号（朝上立着／朝下挂着），稳不稳就换了个个儿"
+        : "<span class='warn'>反例／边界：</span>现在这一格是青的，因为 a ＜ 0：棍子是朝下挂着的摆，它自己会荡回最低点。把 a 拖回 0 以上，它就红了");
+  }
+
+  var sa = document.getElementById("sa"), sc = document.getElementById("sc");
+  sa.addEventListener("input", function () { state.a = parseFloat(sa.value) || 0; draw(); });
+  sc.addEventListener("input", function () { state.c = parseFloat(sc.value) || 0; draw(); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

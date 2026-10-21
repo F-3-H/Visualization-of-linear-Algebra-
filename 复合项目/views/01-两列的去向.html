@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 01 · 两列的去向 —— 矩阵复合</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">矩阵复合 · 视角 01<small>一张表，记住两列就够了</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell" style="grid-template-columns: minmax(0,1fr) 360px">
+  <section class="stage">
+    <canvas id="cv" height="480"></canvas>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">一支箭头被"摁一下"送到哪，由这张表决定；而这张表只要记住两件事——横箭头去哪、竖箭头去哪。把这两个头拖一拖，整张网格跟着弯，表的四个数跟着变。</p>
+
+    <div class="ctl">
+      <label>表 M（两列＝两个头的去向）</label>
+      <div class="matgrid">
+        <input type="number" id="ma" step="0.1" value="1">
+        <input type="number" id="mb" step="0.1" value="0.6">
+        <input type="number" id="mc" step="0.1" value="-0.4">
+        <input type="number" id="md" step="0.1" value="1.3">
+      </div>
+    </div>
+    <div class="ctl">
+      <label>待摁的箭头 x</label>
+      <div class="vecgrid">
+        <input type="number" id="ux" step="0.1" value="1.4">
+        <input type="number" id="uy" step="0.1" value="0.9">
+      </div>
+    </div>
+
+    <div class="btnrow" id="presets"></div>
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>该怎么读这张图：</b>浅灰虚线是原来的横、竖两支箭头；它们被摁到的地方，就是绿、红两支箭头的头。网格整体被摁弯，但每一根线仍是直的、彼此仍平行等距——这就是"作用一次"的全部。</p>
+    <p class="note" style="border-color:var(--sum)"><b>一句话记住：</b>表只要两列就够了。下一站要把两张表<b>连着摁</b>，靠的正是这两列——所以先把它们认清。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>拖动图上绿头或红头（也可以拖青头）；读数里的两列就是它们此刻的位置。M·x 表示用表 M 去摁箭头 x。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var cv = document.getElementById("cv");
+  var view = D.create(cv, { range: 3, pad: 34 });
+
+  var C = { i: "#0e9f6e", j: "#d64545", x: "#0e7490", mx: "#7c5cbf", ghost: "#aeb9c8" };
+  var state = { M: L.mat(1, 0.6, -0.4, 1.3), x: L.vec(1.4, 0.9) };
+  var frozen = null, drag = null;
+
+  function e1() { return L.vec(state.M.a, state.M.c); }   // î 的像＝表的第一列
+  function e2() { return L.vec(state.M.b, state.M.d); }   // ĵ 的像＝表的第二列
+
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+  function read() {
+    state.M = L.mat(num("ma"), num("mb"), num("mc"), num("md"));
+    state.x = L.vec(num("ux"), num("uy"));
+  }
+  function syncInputs() {
+    document.getElementById("ma").value = +state.M.a.toFixed(2);
+    document.getElementById("mb").value = +state.M.b.toFixed(2);
+    document.getElementById("mc").value = +state.M.c.toFixed(2);
+    document.getElementById("md").value = +state.M.d.toFixed(2);
+    document.getElementById("ux").value = +state.x.x.toFixed(2);
+    document.getElementById("uy").value = +state.x.y.toFixed(2);
+  }
+  ["ma", "mb", "mc", "md", "ux", "uy"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () { read(); draw(); });
+  });
+
+  // 预设
+  var presets = [
+    { label: "单位表（不动）", m: L.ID() },
+    { label: "剪切", m: L.mat(1, 1, 0, 1) },
+    { label: "转 90°", m: L.mat(0, -1, 1, 0) },
+    { label: "抻 2 倍", m: L.mat(2, 0, 0, 1) },
+    { label: "摁扁（det=0）", m: L.mat(1, 0.5, 2, 1) }
+  ];
+  var box = document.getElementById("presets");
+  presets.forEach(function (p) {
+    var b = document.createElement("button");
+    b.textContent = p.label;
+    b.addEventListener("click", function () { state.M = p.m; syncInputs(); draw(); });
+    box.appendChild(b);
+  });
+
+  function mustSee() { return [L.vec(0, 0), L.vec(1, 0), L.vec(0, 1), e1(), e2(), state.x, L.apply(state.M, state.x)]; }
+  function fitR() { return D.fitRange(mustSee()); }
+
+  function draw() {
+    var R = frozen || fitR();          // 拖动期冻结画框，鼠标底下的点才不自个儿跑
+    view.setRange(R);
+    var step = D.gridStep(R);
+    view.clear();
+    view.grid({ step: step });
+    view.warpGrid(state.M, { step: step, color: "#7c5cbf", alpha: 0.26, width: 1 });
+
+    // 原来的横、竖两支箭头（浅灰虚线）
+    view.arrow(L.vec(0, 0), L.vec(1, 0), { color: C.ghost, width: 2, dash: [4, 3] });
+    view.arrow(L.vec(0, 0), L.vec(0, 1), { color: C.ghost, width: 2, dash: [4, 3] });
+
+    // 两列的像
+    view.arrow(L.vec(0, 0), e1(), { color: C.i, width: 3.2 });
+    view.text(e1(), "î 的像", { color: C.i, dx: 9, dy: -10, bold: true });
+    view.arrow(L.vec(0, 0), e2(), { color: C.j, width: 3.2 });
+    view.text(e2(), "ĵ 的像", { color: C.j, dx: 9, dy: -10, bold: true });
+
+    // 待摁的箭头 x
+    view.arrow(L.vec(0, 0), state.x, { color: C.x, width: 2.4 });
+    view.dot(state.x, { color: C.x, r: 5 });
+    view.text(state.x, "x", { color: C.x, dx: 9, dy: 12, bold: true });
+
+    // 按两列拼出来的路：先 x.x 份第一列，再 x.y 份第二列
+    var mx = L.apply(state.M, state.x);
+    var p1 = L.scale(e1(), state.x.x);
+    view.arrow(L.vec(0, 0), p1, { color: C.i, width: 1.8, dash: [6, 4] });
+    view.arrow(p1, mx, { color: C.j, width: 1.8, dash: [6, 4] });
+
+    // 摁过之后 x 的位置
+    view.arrow(L.vec(0, 0), mx, { color: C.mx, width: 3 });
+    view.dot(mx, { color: C.mx, r: 5 });
+    view.text(mx, "M·x", { color: C.mx, dx: 11, dy: 4, bold: true });
+
+    // 读数：两条互不相通的路
+    var route = L.add(L.scale(e1(), state.x.x), L.scale(e2(), state.x.y));
+    var agree = L.eqv(route, mx, 1e-9);
+    document.getElementById("ro").innerHTML =
+      "M = [ " + state.M.a.toFixed(2) + "  " + state.M.b.toFixed(2) + " ]\n" +
+      "    [ " + state.M.c.toFixed(2) + "  " + state.M.d.toFixed(2) + " ]\n" +
+      "î 的像（第一列）＝ (" + e1().x.toFixed(2) + ", " + e1().y.toFixed(2) + ")\n" +
+      "ĵ 的像（第二列）＝ (" + e2().x.toFixed(2) + ", " + e2().y.toFixed(2) + ")\n" +
+      "M·x ＝ (" + mx.x.toFixed(3) + ", " + mx.y.toFixed(3) + ")\n" +
+      "<span class='ok'>互证：</span>直接用表摁 (" + mx.x.toFixed(3) + ", " + mx.y.toFixed(3) + ")\n" +
+      "       ＝ 按两列拼 (" + route.x.toFixed(3) + ", " + route.y.toFixed(3) + ")\n" +
+      (agree ? "       —— 两条路，同一个终点。" : "       —— 对不上！（互证失败）");
+  }
+
+  /* ---------- 拖动 ---------- */
+  function pick(px, py) {
+    var cand = [{ k: "e1", p: e1() }, { k: "e2", p: e2() }, { k: "x", p: state.x }];
+    var best = null, bd = 18;   // 抓取半径按屏幕像素判，与画框无关
+    for (var i = 0; i < cand.length; i++) {
+      var dx = view.sx(cand[i].p.x) - px, dy = view.sy(cand[i].p.y) - py;
+      var d = Math.hypot(dx, dy);
+      if (d < bd) { bd = d; best = cand[i].k; }
+    }
+    return best;
+  }
+  function onDown(ev) {
+    drag = pick(ev.offsetX, ev.offsetY);
+    if (drag) { frozen = fitR(); if (cv.setPointerCapture) cv.setPointerCapture(ev.pointerId); }
+  }
+  function onMove(ev) {
+    if (!drag) return;
+    var wx = view.wx(ev.offsetX), wy = view.wy(ev.offsetY);
+    var snap = view.range() / 40;      // 吸附步长按画框折算
+    wx = Math.round(wx / snap) * snap; wy = Math.round(wy / snap) * snap;
+    if (drag === "e1") state.M = L.mat(wx, state.M.b, wy, state.M.d);
+    else if (drag === "e2") state.M = L.mat(state.M.a, wx, state.M.c, wy);
+    else state.x = L.vec(wx, wy);
+    syncInputs(); draw();
+  }
+  function onUp(ev) {
+    if (!drag) return;
+    drag = null; frozen = null; draw();
+    if (cv.releasePointerCapture) { try { cv.releasePointerCapture(ev.pointerId); } catch (e) {} }
+  }
+  cv.addEventListener("pointerdown", onDown);
+  cv.addEventListener("pointermove", onMove);
+  cv.addEventListener("pointerup", onUp);
+  cv.addEventListener("pointercancel", onUp);
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+
+  syncInputs(); view.resize(); draw();
+})();
+</script>
+</body>
+</html>

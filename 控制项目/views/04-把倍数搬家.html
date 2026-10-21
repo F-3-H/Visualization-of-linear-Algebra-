@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 04 · 把倍数搬家 —— 让会倒的东西站住</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">让会倒的东西站住 · 视角 04<small>把倍数搬家：想让它落在哪，反解出要多少力</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--sum)"></i>○ 你希望倍数落在哪</span>
+      <span><i class="dot" style="background:var(--u)"></i>× 闭环那张表实际给出的倍数</span>
+      <span><i class="dot" style="background:var(--ghost)"></i>× 原来那根棍子的两个倍数</span>
+      <span style="margin-left:auto">拖空心圆</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">上一站是先把力接上、再看它落在哪。这一站倒过来念：先在图上点两个位置，说"我要它落在这儿"，再反解出该用多大力。左半边是自己回来的那一半。</p>
+
+    <div class="btnrow compact">
+      <button id="b1">−1 与 −2</button>
+      <button id="b2">−1±2i</button>
+      <button id="b3">重根 −2</button>
+      <button id="b4">一个跑到右边</button>
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>吸附：</b>拖的时候贴着 0.05 的格子走；靠近实轴会贴到实轴上；靠近"另一个的镜像"会自动对齐成共轭一对，好让你摸到"绕两圈再回"那种。<br><b>猜一猜：</b>把上面那个圆往上拖一点点、让两个圆不再共轭，会发生什么？</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；a＝g/L（固定 1）；c 阻尼（固定 0.2）；λ 倍数；○ 目标，× 实得。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var R = 3;
+  var view = D.create(canvas, { range: R, pad: 34 });
+
+  /* a、c 仍是上一站那根棍子；b ＝ (0, 1)（力从角速度这一行进去）。 */
+  var A0 = L.stickMat(1, 0.2), B = L.B_STICK;
+  var OPEN = L.eigen(A0);
+
+  /* 复平面：横轴实部，纵轴虚部。画框固定——"左右半边"这条分界本身
+     就是要原地对读的标尺，取景与对象只能有一个动。 */
+  var state = { t: [{ x: -1, y: 0 }, { x: -2, y: 0 }] };
+  var drag = -1;
+
+  /* 画框固定（左右半边的分界本身就是要原地对读的标尺），于是反过来约束对象：
+     目标点拖到画框边上就停住。取景与对象只能有一个动——夹取在共享层（view.clamp）。 */
+  function snap(p, other) {
+    var g = 0.05;
+    var c = view.clamp(p, 0.12);
+    var x = Math.round(c.x / g) * g, y = Math.round(c.y / g) * g;
+    if (Math.abs(y) < 0.13) y = 0;                       // 靠近实轴就贴上去
+    if (y !== 0 && Math.abs(x - other.x) < 0.2 && Math.abs(y + other.y) < 0.2) {
+      x = other.x; y = -other.y;                          // 靠近镜像就对齐成共轭一对
+    }
+    return view.clamp({ x: x, y: y }, 0.12);
+  }
+  function csAdd(p, q) { return { x: p.x + q.x, y: p.y + q.y }; }
+  function csMul(p, q) { return { x: p.x * q.x - p.y * q.y, y: p.x * q.y + p.y * q.x }; }
+  function fmt(x) { return (x > 0 ? "+" : "") + x.toFixed(2); }
+  function csStr(p) { return p.y === 0 ? p.x.toFixed(2) : p.x.toFixed(2) + fmt(p.y) + "i"; }
+  function pairStr(a, b) {
+    if (a.y === 0 && b.y === 0) return fmt(a.x) + " 与 " + fmt(b.x);
+    if (Math.abs(a.x - b.x) < 1e-9 && Math.abs(a.y + b.y) < 1e-9) {
+      return a.x.toFixed(2) + " ± " + Math.abs(a.y).toFixed(2) + "i";
+    }
+    return csStr(a) + " 与 " + csStr(b);
+  }
+  /* 一张表实际给出的两个倍数，摆成两个复点，好跟目标逐个对读 */
+  function actPair(e) {
+    if (e.type === "complex") return [{ x: e.re, y: e.im }, { x: e.re, y: -e.im }];
+    if (e.type === "real") return [{ x: e.l1, y: 0 }, { x: e.l2, y: 0 }];
+    return [{ x: e.l, y: 0 }, { x: e.l, y: 0 }];
+  }
+  function cross(p, r, color, w) {
+    var c = view.ctx, x = view.sx(p.x), y = view.sy(p.y), h = r / 2;
+    c.save();
+    c.strokeStyle = color; c.lineWidth = w; c.lineCap = "round";
+    c.beginPath();
+    c.moveTo(x - h, y - h); c.lineTo(x + h, y + h);
+    c.moveTo(x + h, y - h); c.lineTo(x - h, y + h);
+    c.stroke();
+    c.restore();
+  }
+
+  function draw() {
+    var P = state.t[0], Q = state.t[1];
+    var s = csAdd(P, Q), t = csMul(P, Q);
+    /* 一行实数 k 能搬动的，恰好是"两个目标要么都是实数、要么互为共轭"。
+       这时 s ＝ p+q、t ＝ p·q 都是实数；反过来虚部归零也就蕴涵了这一条。 */
+    var solvable = Math.abs(s.y) < 1e-9 && Math.abs(t.y) < 1e-9;
+    var k = solvable ? L.placePolesST(A0, B, s.x, t.x) : null;
+    var kRef = solvable ? L.gainsStick(1, 0.2, s.x, t.x) : null;
+    var Acl = k ? L.closeLoop(A0, B, k) : null;
+    var e = Acl ? L.eigen(Acl) : null;
+    var got = e ? actPair(e) : null;
+
+    view.setRange(R);
+    view.clear();
+    var ctx = view.ctx, W = view.width(), H = view.height(), ex = view.extent();
+    var zx = view.sx(0);
+
+    /* 左半边＝自己回来，右半边＝跑掉。这层底色是算出来的判据，不是装饰。 */
+    ctx.save();
+    ctx.fillStyle = "rgba(14,116,144,0.085)"; ctx.fillRect(0, 0, zx, H);
+    ctx.fillStyle = "rgba(214,69,69,0.085)"; ctx.fillRect(zx, 0, W - zx, H);
+    ctx.restore();
+
+    view.grid({ step: 1 });
+    view.line(L.vec(0, ex.y0 * 1.12), L.vec(0, ex.y1 * 1.12), { color: D.C.ink, width: 1.8, dash: [7, 5] });
+    view.text(L.vec(ex.x0 + 0.24, ex.y1 * 0.86), "实部 ＜ 0：自己回来", { color: D.C.v, bold: true });
+    view.text(L.vec(ex.x1 - 0.24, ex.y1 * 0.86), "实部 ＞ 0：自己跑掉", { color: D.C.red, bold: true, align: "right" });
+
+    /* 原来那根棍子的两个倍数：搬家的起点，摆在图上做参照 */
+    view.text(L.vec(OPEN.l1, 0), "原来的 " + fmt(OPEN.l1), { color: D.C.inkSoft, dy: -14, dx: 8 });
+    cross({ x: OPEN.l1, y: 0 }, 7, D.C.ghost, 1.8);
+    cross({ x: OPEN.l2, y: 0 }, 7, D.C.ghost, 1.8);
+
+    /* 实得（×）先画，目标（○）后压：重合时才看得清是两支叠在一起 */
+    if (got) {
+      cross(got[0], 9, D.C.u, 2.6);
+      cross(got[1], 9, D.C.u, 2.6);
+    }
+    [P, Q].forEach(function (p) {
+      view.ring(p, { r: 7.5, color: D.C.sum, fill: "rgba(183,121,31,0.16)", width: 2.4 });
+    });
+
+    var dmax = 0;
+    if (got) {
+      dmax = Math.max(Math.hypot(got[0].x - P.x, got[0].y - P.y),
+                      Math.hypot(got[1].x - Q.x, got[1].y - Q.y));
+    }
+
+    if (solvable) {
+      var v = L.verdict(Acl);
+      document.getElementById("ro").innerHTML =
+        "目标 s ＝ p＋q ＝ " + fmt(s.x) + "，t ＝ p·q ＝ " + fmt(t.x) + "\n" +
+        "<span class='ok'>算路一</span> 拉杆公式 k ＝ e₂ᵀC⁻¹φ(A)：k ＝ (" + k.x.toFixed(3) + ", " + k.y.toFixed(3) + ")\n" +
+        "<span class='ok'>算路二</span> 对着系数念 k₁＝a＋t、k₂＝−s−c：k ＝ (" + kRef.x.toFixed(3) + ", " + kRef.y.toFixed(3) + ")\n" +
+        "实得 " + pairStr(got[0], got[1]) + "，与目标差 " + dmax.toExponential(0) + "\n" +
+        "判词：" + (v === "回" ? "<span class='ok'>回</span>（两个都落在左半边）"
+                : (v === "跑" ? "<span class='bad'>跑</span>（有一个落到右半边去了）"
+                : "<span class='warn'>绕</span>（有一个正落在虚轴上）")) + "\n" +
+        "<span class='ok'>互证：</span>○ 是你要的、× 是闭环那张表算出来的，它们在图上重合——两条完全不同的算路还给出同一个 k\n" +
+        "<span class='warn'>反例：</span>把上面那个圆往上拖一点，别让它跟下面那个共轭——立刻变成「做不到」";
+    } else {
+      var si = P.y + Q.y, ti = t.y;
+      document.getElementById("ro").innerHTML =
+        "目标 " + pairStr(P, Q) + "\n" +
+        "和 s ＝ " + fmt(s.x) + fmt(si) + "i，积 t ＝ " + fmt(t.x) + fmt(ti) + "i\n" +
+        "<span class='bad'>这一对做不到。</span>不是力不够大，是结构上不可能：闭环那张表的四个数都是实的，" +
+        "它的特征多项式 λ² − sλ ＋ t 的系数也就都是实的；而系数是实的方程，两个根要么是一对实数，要么是一对共轭复数。\n" +
+        "<span class='warn'>反例／边界：</span>把上面那个圆拖回去配成共轭（项目会自动对齐）——s、t 的虚部立刻归零，k 就出来了";
+    }
+  }
+
+  function toWorld(ev) {
+    var r = canvas.getBoundingClientRect();
+    return { x: view.wx(ev.clientX - r.left), y: view.wy(ev.clientY - r.top) };
+  }
+  canvas.addEventListener("pointerdown", function (ev) {
+    var r = canvas.getBoundingClientRect(), i, d;
+    for (i = 0; i < 2; i++) {
+      d = Math.hypot(ev.clientX - r.left - view.sx(state.t[i].x), ev.clientY - r.top - view.sy(state.t[i].y));
+      if (d < 18) { drag = i; canvas.setPointerCapture(ev.pointerId); return; }
+    }
+  });
+  canvas.addEventListener("pointermove", function (ev) {
+    if (drag < 0) return;
+    var w = toWorld(ev);
+    if (!isFinite(w.x) || !isFinite(w.y)) return;
+    state.t[drag] = snap(w, state.t[1 - drag]);
+    draw();
+  });
+  canvas.addEventListener("pointerup", function () { if (drag >= 0) { drag = -1; draw(); } });
+
+  function setT(a, b) { state.t = [a, b]; draw(); }
+  document.getElementById("b1").addEventListener("click", function () { setT({ x: -1, y: 0 }, { x: -2, y: 0 }); });
+  document.getElementById("b2").addEventListener("click", function () { setT({ x: -1, y: 2 }, { x: -1, y: -2 }); });
+  document.getElementById("b3").addEventListener("click", function () { setT({ x: -2, y: 0 }, { x: -2, y: 0 }); });
+  document.getElementById("b4").addEventListener("click", function () { setT({ x: 0.5, y: 0 }, { x: -3, y: 0 }); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

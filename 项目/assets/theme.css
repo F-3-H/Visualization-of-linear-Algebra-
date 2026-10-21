@@ -1,0 +1,223 @@
+/* ============================================================
+ * 线性代数基础 · 共享设计层
+ * 唯一配色来源。各视角页面不再硬写界面色（数据色除外，
+ * 数据色也必须用这里的 token）。
+ * 深色主题：墨底纸面，浅墨文字（照 D:/汽车悬挂系统 那篇正文页的配色）。
+ * ============================================================ */
+
+:root {
+  --bg: #161618;
+  --panel: #1e1e20;
+  --panel2: #252526;
+  --ink: #e9e9ec;
+  --ink-soft: #a0a0a8;
+  --line: #3a3a3d;
+  --grid: #34343c;
+  --axis: #7b7b86;
+  --paper: #1b1b1d;
+
+  /* 数据色（与文章配图同源） */
+  --u: #3ddc97;   /* 第一捆 u：绿 / b（力从哪儿进去） */
+  --v: #22c7de;   /* 第二捆 v：青 / 回来的那条线 */
+  --sum: #f0b429;   /* 合成：琥珀 / 目标 */
+  --red: #ff6b6b;   /* 特征方向：红 / 往外的那条线 */
+  --purple: #a78bfa;   /* 反作用：紫 / 相流 */
+  --ghost: #767f8c;   /* 作用前的影子 */
+
+  /* 控件与强调 */
+  --accent: #00adb5;
+  --input-bg: #1b1b1d;
+  --hover: #2c2c30;
+  --on-bg: #123039;
+  --pale-u: #16342a;
+  --pale-sum: #382c15;
+  --pale-purple: #2a2440;
+  --pale-v: #123039;
+
+  --radius: 10px;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace;
+  --sans: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+/* 链接：浅色主题下浏览器默认的深蓝在墨底上几乎看不见，统一取 --v；
+   有自己颜色规则的（顶栏的返回、卡片）按类名覆盖，不受这条影响。 */
+a { color: var(--v); }
+a:hover { color: var(--u); }
+
+/* ---------- 页面外壳 ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar .brand { font-weight: 700; letter-spacing: .5px; }
+.topbar .brand small { color: var(--ink-soft); font-weight: 400; margin-left: 8px; }
+.topbar a.back {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 14px;
+  font-size: 13px;
+  background: var(--bg);
+}
+.topbar a.back:hover { color: var(--ink); border-color: var(--axis); }
+
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 14px;
+  padding: 14px 18px;
+  max-width: 1280px;
+  margin: 0 auto;
+  align-items: start;
+}
+/* 断点 960 会让「正文里嵌进来的那一站」（内宽约 930）掉成单列，
+   读者得在框里再滚一次才看得见右边的互证／反例。降到 900 以后，
+   常见的桌面宽度里都还是「图 + 读数」并排。 */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.card h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.card .sub {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.stage {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+.stage canvas {
+  display: block;
+  width: 100%;
+  /* 高度必须由 CSS 给定：只写 width:100% 时，浏览器会拿 canvas 的
+     height 属性当固有比例（无 width 属性＝默认 300），把画布按 300:520
+     撑成比窗口还高的竖长条，画出来是纵向拉长的图。 */
+  height: auto;
+  aspect-ratio: 3 / 2;
+  max-height: 66vh;
+  background: var(--paper);
+  border-radius: 6px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ---------- 控件 ---------- */
+.ctl { margin: 10px 0; }
+.ctl label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+.ctl label output { font-family: var(--mono); color: var(--ink); }
+.ctl input[type="range"] { width: 100%; accent-color: var(--v); }
+.ctl input[type="number"] {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 14px;
+  background: var(--panel);
+  color: var(--ink);
+}
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; min-width: 0; }
+
+.btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.btnrow button, .ctl button {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.btnrow button:hover, .ctl button:hover { border-color: var(--axis); background: var(--hover); }
+.btnrow button.on { border-color: var(--v); color: var(--v); background: var(--on-bg); }
+/* 预设按钮多的时候（视角 02 有九个）默认尺寸会把一行挤成四行，
+   窄窗口里光按钮就吃掉一百多像素。compact 供"按钮成组出现"的行使用。 */
+.btnrow.compact { gap: 4px; margin: 6px 0; }
+.btnrow.compact button { padding: 2px 7px; font-size: 11.5px; }
+
+.matgrid, .vecgrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin: 6px 0;
+}
+.matgrid input, .vecgrid input { text-align: center; }
+
+.readout {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 10px;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+.readout .ok { color: var(--u); font-weight: 700; }
+.readout .warn { color: var(--sum); font-weight: 700; }
+.readout .bad { color: var(--red); font-weight: 700; }
+
+.note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-left: 3px solid var(--line);
+  padding-left: 10px;
+  margin-top: 12px;
+}
+.note b { color: var(--ink); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+.footer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 6px 18px 26px;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+.footer .zh-CN::before { content: "语言：简体中文 · "; }

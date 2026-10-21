@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>线性代数基础 · 可视化项目</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .hero { max-width: 1280px; margin: 0 auto; padding: 26px 18px 6px; }
+  .hero h1 { font-size: 22px; margin: 0 0 6px; }
+  .hero p { color: var(--ink-soft); margin: 0 0 4px; max-width: 760px; }
+  .views {
+    max-width: 1280px; margin: 14px auto; padding: 0 18px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px;
+  }
+  .vcard {
+    display: block; text-decoration: none; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px; transition: border-color .15s;
+  }
+  .vcard:hover { border-color: var(--v); }
+  .vcard .no { font-family: var(--mono); color: var(--v); font-size: 12px; letter-spacing: 1px; }
+  .vcard h3 { margin: 4px 0 6px; font-size: 16px; }
+  .vcard p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+  .vcard .go { margin-top: 10px; font-size: 13px; color: var(--v); }
+  .notation {
+    max-width: 1280px; margin: 6px auto 0; padding: 0 18px;
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">线性代数基础 · 可视化项目<small>与《线性代数基础》正文配套：五个视角，一层设计</small></div>
+</header>
+
+<section class="hero">
+  <h1>一捆数，与作用它的规则</h1>
+  <p>正文走到哪一步，这里就有哪一站。五个视角各自独立、都能单独打开，共用同一套配色、字体与页面外壳——点进任何一个，你都知道自己还在同一个项目里。全部离线自足，双击即可打开。</p>
+  <p>读法：先把箭头的头拖一拖，再敲数；每个视角右侧都有"互证"——两条互不相通的路给出同一个答案；也有"反例"——亲手撞到这个说法在哪儿不成立。</p>
+  <p>只想读文章？<a href="文章.html">正文的网页版</a>在这儿：图与公式都与项目同源，双击即可打开。</p>
+</section>
+
+<main class="views">
+  <a class="vcard" href="文章.html">
+    <div class="no">READ</div>
+    <h3>正文 · 一捆数与一张表</h3>
+    <p>文章的网页版：一捆数、一张表、先后有别、变了又没变的方向、面积与反作用——十四张图、十八个公式都在，浏览器里从头读到尾，无需联网。</p>
+    <div class="go">去读正文 →</div>
+  </a>
+  <a class="vcard" href="views/01-向量工场.html">
+    <div class="no">VIEW 01</div>
+    <h3>一捆数</h3>
+    <p>两个数并排放，就是一支箭头。并成一捆、整捆放大、反向——首尾相接与平行四边形是两条路，终点同一个。</p>
+    <div class="go">进去拖动 →</div>
+  </a>
+  <a class="vcard" href="views/02-矩阵作用台.html">
+    <div class="no">VIEW 02</div>
+    <h3>一张表</h3>
+    <p>把"摁一下"写成四个数。第一列是横箭头被送到哪，第二列是竖箭头被送到哪；表的面积放大倍数，图上能量出来。</p>
+    <div class="go">进去换一张表 →</div>
+  </a>
+  <a class="vcard" href="views/03-先后有别.html">
+    <div class="no">VIEW 03</div>
+    <h3>先后有别</h3>
+    <p>两张表连着摁，合起来还是一张表。先穿袜子后穿鞋——顺序换了，合表就换。也有一对表例外。</p>
+    <div class="go">进去比一比 →</div>
+  </a>
+  <a class="vcard" href="views/04-特征方向.html">
+    <div class="no">VIEW 04</div>
+    <h3>变了又没变的方向</h3>
+    <p>网格被摁弯，大多数方向都转了，唯独几个方向只伸缩不转向。切到弹簧系统：椭圆、螺旋，和越过临界阻尼那一刻。</p>
+    <div class="go">上红线拖一个点 →</div>
+  </a>
+  <a class="vcard" href="views/05-行列式与反作用.html">
+    <div class="no">VIEW 05</div>
+    <h3>面积、塌缩与反作用</h3>
+    <p>把放大倍数连续调小：面积连续变小，到 0 那一刻平面塌成一条线。已知结果 b，反推原因 x；摁扁了就反不回去。</p>
+    <div class="go">把滑条推到头 →</div>
+  </a>
+</main>
+
+<section class="notation">
+  <div class="card">
+    <h2>参数记法（五个视角一致，与正文一致）</h2>
+    <p class="sub" style="margin:0">u、v 一捆数；M、A、B 一张表；M·u 作用结果；A·B 先摁 B 再摁 A；λ 特征方向上的放大倍数；det(M) 面积放大倍数；弹簧系统 m 质量、k 弹簧系数、c 阻尼，与第 10 篇一致。</p>
+  </div>
+</section>
+
+<footer class="footer">
+  <span class="zh-CN"></span>核心数学在 <code>assets/core.js</code>，可被 tests/verify-core.cjs 抽出单独跑断言（含"把故障装回去"的反向对照）。
+</footer>
+</body>
+</html>

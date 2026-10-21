@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 01 · 一捆数 —— 线性代数基础</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">线性代数基础 · 视角 01<small>一捆数：两个数并排放，从来都是一支箭头</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--u)"></i>第一捆 u</span>
+      <span><i class="dot" style="background:var(--v)"></i>第二捆 v</span>
+      <span><i class="dot" style="background:var(--sum)"></i>并起来的一捆 u+v</span>
+      <span style="margin-left:auto">拖动箭头的头可以改这一捆；也可以直接敲数</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">两个数并排放（比如相空间里的 y 和 v），就是一支从原点出发的箭头。两捆并成一捆、整捆按比例放大缩小——都先在图上跑一遍，再看数。</p>
+
+    <div class="ctl">
+      <label>第一捆 u =（横，纵）</label>
+      <div class="row">
+        <input type="number" id="ux" step="0.1" value="2">
+        <input type="number" id="uy" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="ctl">
+      <label>第二捆 v =（横，纵）</label>
+      <div class="row">
+        <input type="number" id="vx" step="0.1" value="1">
+        <input type="number" id="vy" step="0.1" value="2">
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button id="tSum" class="on">并成一捆 u+v</button>
+      <button id="tPar" class="on">平行四边形画法</button>
+      <button id="t2u">整捆放大 2u</button>
+      <button id="tNeg">反向 −u</button>
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>日常那句话：</b>往东走一段、再往北走一段，等于直接斜着走一段。两段位移接起来，就是一段位移；两捆数接起来，就是一捆数。<b>整体不是两个部分各讲各的</b>——接起来的一捆有它自己的方向和长短。</p>
+    <p class="note" id="colNote" style="display:none;border-color:var(--sum)"><b>边界：</b>两捆共线了——并起来还压在这条线上，没有生出新方向。这时候"两捆"退化成了"一捆的加减"。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：u、v 表示一捆数；本页不引入任何新术语。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 5, pad: 34 });
+
+  var state = {
+    u: L.vec(2, 1), v: L.vec(1, 2),
+    sum: true, par: true, two: false, neg: false
+  };
+  var drag = null, frozenRange = null;
+
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+  function syncInputs() {
+    document.getElementById("ux").value = +state.u.x.toFixed(2);
+    document.getElementById("uy").value = +state.u.y.toFixed(2);
+    document.getElementById("vx").value = +state.v.x.toFixed(2);
+    document.getElementById("vy").value = +state.v.y.toFixed(2);
+  }
+  ["ux", "uy", "vx", "vy"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      state.u = L.vec(num("ux"), num("uy"));
+      state.v = L.vec(num("vx"), num("vy"));
+      draw();
+    });
+  });
+
+  function toggle(id, key) {
+    var el = document.getElementById(id);
+    el.addEventListener("click", function () {
+      state[key] = !state[key];
+      el.classList.toggle("on", state[key]);
+      draw();
+    });
+  }
+  toggle("tSum", "sum"); toggle("tPar", "par"); toggle("t2u", "two"); toggle("tNeg", "neg");
+
+  function hit(p) {
+    var s = L.dist({ x: view.wx(p.x), y: view.wy(p.y) }, state.u) < 0.45 ? "u" :
+            L.dist({ x: view.wx(p.x), y: view.wy(p.y) }, state.v) < 0.45 ? "v" : null;
+    return s;
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    var r = canvas.getBoundingClientRect();
+    var t = hit({ x: e.clientX - r.left, y: e.clientY - r.top });
+    if (t) {
+      drag = t;
+      // 拖动期间画框冻结：否则 u 一动、画框跟着动，鼠标底下的点会自己跑
+      frozenRange = view.range();
+      canvas.setPointerCapture(e.pointerId);
+    }
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var r = canvas.getBoundingClientRect();
+    var p = { x: view.wx(e.clientX - r.left), y: view.wy(e.clientY - r.top) };
+    p.x = Math.round(p.x * 10) / 10; p.y = Math.round(p.y * 10) / 10;
+    if (drag === "u") state.u = p; else state.v = p;
+    syncInputs(); draw();
+  });
+  canvas.addEventListener("pointerup", function () {
+    if (drag) { drag = null; frozenRange = null; draw(); }  // 松手后按新内容重新取景
+  });
+
+  /* 取景跟内容走：u、v 是读者敲的，u+v、2u、−u 都随它们涨。
+     画框写死 5 的话，敲一组大数就会得到"读数里有、图上没有"。
+     算法在共享层（D.fitRange）；这里只声明哪些东西必须看得见。 */
+  function fitRange() {
+    var pts = [state.u, state.v, L.add(state.u, state.v)];   // 两个端点 + 并起来的那一捆
+    if (state.two) pts.push(L.scale(state.u, 2));            // 2u
+    if (state.neg) pts.push(L.scale(state.u, -1));           // −u
+    return D.fitRange(pts);
+  }
+
+  function draw() {
+    var R = frozenRange == null ? fitRange() : frozenRange;
+    view.setRange(R);
+    view.clear(); view.grid({ step: D.gridStep(R) });
+    var u = state.u, v = state.v, s = L.add(u, v);
+
+    if (state.neg) {
+      view.arrow(L.vec(0, 0), L.scale(u, -1), { color: D.C.u, dash: [5, 4] });
+      view.text(L.scale(u, -1), "−u", { color: D.C.u, dx: -6, dy: -10, align: "right" });
+    }
+    if (state.two) {
+      view.arrow(L.vec(0, 0), L.scale(u, 2), { color: D.C.u, width: 1.6, dash: [2, 3] });
+      view.text(L.scale(u, 2), "2u", { color: D.C.u, dx: 6, dy: -8 });
+    }
+
+    view.arrow(L.vec(0, 0), u, { color: D.C.u, width: 2.6 });
+    view.text(u, "u", { color: D.C.u, dx: 8, dy: -8, bold: true });
+    view.arrow(L.vec(0, 0), v, { color: D.C.v, width: 2.6 });
+    view.text(v, "v", { color: D.C.v, dx: 8, dy: 14, bold: true });
+
+    if (state.sum) {
+      // 第一条路：首尾相接
+      view.arrow(u, s, { color: D.C.sum, width: 2.2 });
+      if (state.par) {
+        // 第二条路：平行四边形，另一组对边
+        view.arrow(v, s, { color: D.C.ghost, width: 1.4, dash: [4, 4] });
+        view.arrow(u, L.add(u, v), { color: D.C.ghost, width: 1.4, dash: [4, 4] });
+        view.poly([L.vec(0, 0), u, s, v], { fill: "rgba(183,121,31,0.07)" });
+      }
+      view.arrow(L.vec(0, 0), s, { color: D.C.sum, width: 3 });
+      view.dot(s, { color: D.C.sum, r: 5 });
+      view.text(s, "u+v", { color: D.C.sum, dx: 10, dy: 4, bold: true });
+    }
+
+    var col = Math.abs(L.cross(u, v)) < 1e-9 && L.norm(u) > 1e-9 && L.norm(v) > 1e-9;
+    document.getElementById("colNote").style.display = col ? "block" : "none";
+
+    var ro = document.getElementById("ro");
+    ro.innerHTML =
+      "u = (" + u.x.toFixed(2) + ", " + u.y.toFixed(2) + ")   v = (" + v.x.toFixed(2) + ", " + v.y.toFixed(2) + ")\n" +
+      "u+v = (" + s.x.toFixed(2) + ", " + s.y.toFixed(2) + ")   长短 = " + L.norm(s).toFixed(3) + "\n" +
+      "2u = (" + (2 * u.x).toFixed(2) + ", " + (2 * u.y).toFixed(2) + ")   −u = (" + (-u.x).toFixed(2) + ", " + (-u.y).toFixed(2) + ")\n" +
+      "画框 ±" + R + "（自动装下这一组箭头）\n" +
+      "<span class='ok'>互证：</span>首尾相接的终点 (" + s.x.toFixed(2) + ", " + s.y.toFixed(2) + ") ＝ 平行四边形对角线的终点 (" + s.x.toFixed(2) + ", " + s.y.toFixed(2) + ")，两条路同一个终点。";
+  }
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

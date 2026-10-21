@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一捆数与一张表 · 线性代数基础 11</title>
+<style>
+  :root{
+    --bg:#161618; --paper:#1e1e20; --panel:#252526;
+    --border:#3a3a3d; --text:#e9e9ec; --dim:#a0a0a8;
+    --accent:#00adb5; --accent-soft:rgba(0,173,181,.12);
+    --strong:#ffffff; --code-bg:#181818;
+    --warn:#ff9f43; --ok:#51cf66; --red:#ff6b6b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;
+    line-height:1.95; font-size:16.5px; padding:56px 22px 96px;
+  }
+  .wrap{max-width:860px;margin:0 auto;}
+  .eyebrow{
+    display:inline-block;font-size:12px;letter-spacing:.18em;color:var(--accent);
+    border:1px solid var(--accent);border-radius:999px;padding:4px 14px;margin-bottom:22px;
+  }
+  h1{font-size:clamp(26px,4vw,38px);font-weight:600;letter-spacing:.01em;line-height:1.35;margin-bottom:14px;}
+  .lede{color:var(--dim);font-size:14.5px;border-left:3px solid var(--accent);padding-left:14px;}
+  article{margin-top:40px;}
+  article p{margin:20px 0;text-align:justify;}
+  article strong{color:var(--strong);}
+  /* 展示公式：一块纸面，字是强调色，不用图片也不用客户端公式库 */
+  article .fm{
+    background:var(--paper);border:1px solid var(--border);border-radius:10px;
+    padding:20px 22px;margin:26px 0;text-align:center;font-size:18px;letter-spacing:.02em;
+    color:var(--accent);overflow-x:auto;line-height:2.2;
+  }
+  article figure{margin:30px 0;}
+  article figure img{width:100%;display:block;border-radius:12px;border:1px solid var(--border);}
+  article figure figcaption{color:var(--dim);font-size:13px;margin-top:10px;text-align:center;}
+  /* 行内数学 */
+  .im{font-size:1.02em;letter-spacing:.01em;white-space:nowrap;}
+  .im .op{margin:0 .12em;}
+  .fm .op{margin:0 .34em;}
+  .gap{display:inline-block;width:2.2em;}
+  .thin{display:inline-block;width:.22em;}
+  .up{font-style:normal;margin-right:.14em;}
+  .tx{font-style:normal;}
+  /* 上标下标 */
+  sup,sub{font-size:.72em;line-height:0;}
+  sup{vertical-align:.52em;}
+  sub{vertical-align:-.22em;}
+  /* 分式：竖着摞，分子下面一道细线 */
+  .frac{display:inline-flex;flex-direction:column;vertical-align:-.62em;text-align:center;margin:0 .16em;}
+  .frac .nu{border-bottom:1px solid currentColor;padding:0 .3em .05em;font-size:.94em;}
+  .frac .de{padding:.05em .3em 0;font-size:.94em;}
+  /* 矩阵：括号用两条弯边画，跟着内容高度走 */
+  .mx{display:inline-flex;align-items:stretch;vertical-align:middle;margin:0 .12em;}
+  .mx .br{width:.34em;border:1.4px solid currentColor;flex:0 0 auto;}
+  .mx .br.l{border-right:none;border-radius:5px 0 0 5px;}
+  .mx .br.r{border-left:none;border-radius:0 5px 5px 0;}
+  .mx .cells{display:grid;gap:0 .9em;align-items:center;padding:0 .3em;font-size:.95em;}
+  .mx .cells .c{text-align:center;padding:.06em 0;}
+  .sq .rad{border-top:1px solid currentColor;padding:0 .1em;}
+  /* 可交互一站 */
+  .station{
+    margin:34px 0;border:1px solid var(--accent);border-radius:14px;overflow:hidden;
+    background:var(--accent-soft);
+    width:min(1180px,calc(100vw - 56px));
+    margin-left:calc(50% - min(590px,50vw - 28px));
+  }
+  .station .bar{
+    display:flex;align-items:center;gap:10px;padding:12px 18px;
+    background:rgba(0,173,181,.16);font-size:13.5px;color:var(--accent);font-weight:600;
+  }
+  .station .bar .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+  .station .bar .sub{color:var(--dim);font-weight:400;margin-left:auto;font-size:12.5px;}
+  .station .body{padding:14px 18px 18px;}
+  .station .do{font-size:14.5px;color:var(--text);margin-bottom:12px;line-height:1.85;}
+  .station .do b{color:var(--accent);}
+  .station iframe{
+    width:100%;height:var(--h,660px);border:1px solid var(--border);border-radius:10px;background:var(--paper);
+  }
+
+  .station .fallback{font-size:13px;color:var(--dim);margin-top:10px;}
+  .station a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(0,173,181,.4);}
+  .station a:hover{border-bottom-color:var(--accent);}
+  footer{
+    margin-top:64px;padding-top:26px;border-top:1px solid var(--border);
+    color:var(--dim);font-size:13px;
+  }
+  footer p{margin:8px 0;}
+  footer a{color:var(--accent);text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  code{
+    font-family:Consolas,"Courier New",monospace;font-size:13px;color:var(--text);
+    background:var(--code-bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;
+  }
+  @media (max-width:720px){
+    body{padding:36px 16px 72px;font-size:15.5px;}
+    .station{width:calc(100vw - 40px);margin-left:calc(50% - 50vw + 20px);}
+    .station iframe{height:560px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="eyebrow">LINEAR ALGEBRA · 第 11 站</span>
+  <h1>线性代数基础 11<br>一捆数与一张表</h1>
+  <p class="lede">上一篇说，相空间里的一个点就是一个状态；还顺手写了句「可以写成矩阵形式」，然后就没有然后了。这一篇还这笔账：两个数并排放，从来是一支从原点出发的箭头——一捆数；规律作用在这一捆上，就是一个固定的摁法——一张表。表怎么来、两张表连着摁为什么先后有别、摁弯的网格里为什么总有两条方向一动不动、面积放大还是摁扁，都在这五站里。</p>
+
+  <article>
+
+<p>我们依旧从老生常谈的一般规律说起。一个系统的发展，是内外因不断作用变化的结果；我们何以知道一个系统接下来如何发展，在前几篇文章里已经讲过——知道变化的变化的变化，就能推知接下来的发展，这也是泰勒展开得以存在的基础。而这个系列走到这里，数学工具已经备了不少：变量与函数、微分方程、复数与复变函数、拉氏变换，一直到上一篇文章的相空间与功率谱密度。</p>
+
+<p>但有一笔账，我们欠着。</p>
+
+<p>上一篇文章讲相空间的时候，说悬挂系统的两个状态变量可以作坐标轴，紧接着写了一句“可以写成矩阵形式”，然后就没有然后了。一坨排成两行两列的数，凭什么就能代表一个系统的发展规律？在之前的文章里，规律从来不是这个样子的：规律是变化决定变化，是位移决定加速度（上一篇文章里那个反例），是变化率的变化率的变化，统统是变化与变化之间的关系。一坨数不会变化，它怎么“决定”？</p>
+
+<p>要还这笔账，先得回答一个更基本的问题：相空间里的一个点，到底是什么。</p>
+
+<p>上一篇文章说，位移和速度两个变量，一个在横坐标一个在纵坐标，每一个点都代表系统的一个状态。这话是对的，但它只说了一半。我们顺着这句话往下看：平面上的这个点，从来不是孤零零的一个点——它是两个数并排放在一起。可两个数并排放，就只是两个数吗？在《复数与复变函数》那一篇里我们早就见过另一种读法：两个数并排放，就是从原点出发的一支箭头，一个数管方向与长短里的方向，另一个数管长短。复平面上的 2+1i 是如此，相平面上的 (y, v) 也是如此——它从来都是一支箭头，只是上一篇文章里我们叫它点，没叫它箭头。</p>
+
+<figure><img src="图/fig01-一捆数.png" alt="两个数并排放，从来都是一支从原点出发的箭头" loading="lazy"><figcaption>两个数并排放，从来都是一支从原点出发的箭头</figcaption></figure>
+
+<p>现在把这支箭头当成一个东西看，而不是两个数看。第一件能做的事是并起来：两支箭头首尾相接，得到第三支，这就是两捆并成一捆，写成 <span class="im">u<span class="op">+</span>v</span>；日常里这件事我们天天做——往东走一段、再往北走一段，等于直接斜着走一段，两段位移接起来就是一段位移。第二件事是整捆放大缩小：整捆按比例抻长、压短，写成 <span class="im">2v</span>、<span class="im"><span class="frac"><span class="nu">1</span><span class="de">2</span></span>v</span>，连同反向——反向不过是按负的比例放大，写成 <span class="im"><span class="op">−</span>v</span>。《复数与复变函数》里实数与复数统一的加减法则，在这里原样成立，因为那法则本来就是箭头的法则，不是哪一种数独有的法则。</p>
+
+<figure><img src="图/fig02-并成一捆.png" alt="并成一捆：首尾相接与平行四边形是两条路，终点同一个" loading="lazy"><figcaption>并成一捆：首尾相接与平行四边形是两条路，终点同一个</figcaption></figure>
+
+<figure><img src="图/fig03-整捆放大.png" alt="整捆放大、缩小、反向" loading="lazy"><figcaption>整捆放大、缩小、反向</figcaption></figure>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 向量工场<span class="sub">配套项目 VIEW 01</span></div>
+      <div class="body">
+        <p class="do">拖两支箭头的头。<b>按「平行四边形画法」</b>，看首尾相接与平行四边形两条路走到同一个终点；<b>按「整捆放大 2u」「反向 −u」</b>，看整捆按比例变长变短——反向不过是按负的比例放。</p>
+        <iframe src="views/01-向量工场.html" title="向量工场" style="--h:750px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/01-向量工场.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>读到这儿大概会有疑问：把两个数捆成一个东西，除了换个说法，有什么用？用处在于，系统的发展从来不分别照顾哪个数。上一篇文章里，相空间的一个点会移动，每个点都有自己的移动方向与快慢，一堆点的移动就是相流——注意，动的是点，是整捆，不是横坐标动了纵坐标没动。规律一作用，整捆数一起动。这就是整体与部分：一捆数不是两个数简单并列，它有了自己的方向、自己的长短、自己的加减；而规律作用在整体上，不分别作用在部分上。以后我们看到任何并排放的几个数——相空间的状态、复数的实部虚部、一组测量值——都先把它看成一捆，再看这一捆怎么被作用。这样的一捆数，数学上有个名字，叫向量。名字现在可以给了，因为这东西已经在我们手里了。</p>
+
+<p>向量这一站做一点就够了：并起来、整捆缩放。下一站看真正的好戏——作用怎么落在这捆数上。</p>
+
+<p>“作用在一捆数上”是什么样，我们其实早就见过。还是《复数与复变函数》：一个复数乘以另一个复数，就是对原来那支箭头施加一个固定的角度变化与模长变化——转个角度、缩个比例，一摁，整支箭头换了位置。比如 (2+i) 乘以 (1+i)，箭头从指向 (2, 1) 变成指向 (1, 3)：方向转了 45°，长短变成原来的 √2 倍。当时我们说这是复数乘法，其实那就是一次作用，只是没写成表。</p>
+
+<figure><img src="图/fig04-摁一下.png" alt="摁一下：转个角度、缩个比例" loading="lazy"><figcaption>摁一下：转个角度、缩个比例</figcaption></figure>
+
+<p>把这种摁法写成四个数，就是一整张表。怎么写成表？盯着平面上的两支底板箭头看：横着的那支被送到了哪里，竖着的那支被送到了哪里——两个去处各两个数，合起来四个数，排成两行两列 <span class="im">M<span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(2,auto)"><span class="c">a</span><span class="c">b</span><span class="c">c</span><span class="c">d</span></span><span class="br r"></span></span></span>，就是一张表。表作用在一捆数上，得到另一捆数：横着的数按第一列的法则变，竖着的数按第二列的法则变，再合起来，一件事算清楚就是 <span class="im">M·u<span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(2,auto)"><span class="c">a</span><span class="c">b</span><span class="c">c</span><span class="c">d</span></span><span class="br r"></span></span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">x</span><span class="c">y</span></span><span class="br r"></span></span><span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">ax<span class="op">+</span>by</span><span class="c">cx<span class="op">+</span>dy</span></span><span class="br r"></span></span></span>。整张表摁在平面上，网格歪的歪、转的转，单位小方块被摁成平行四边形——平行四边形，说明这支箭头与那支箭头被摁后的相对关系变了，但“直线还是直线、平行还是平行”没变，这正是线性作用与非线性作用的分界（第一篇里那条叠加原理的线，在这里露出了几何面目）。</p>
+
+<figure><img src="图/fig05-表的四数.png" alt="四个数排成两行两列：两列就是两支底板箭头各自的去向" loading="lazy"><figcaption>四个数排成两行两列：两列就是两支底板箭头各自的去向</figcaption></figure>
+
+<figure><img src="图/fig06-摁弯网格.png" alt="表摁在整张平面上：网格歪的歪、转的转" loading="lazy"><figcaption>表摁在整张平面上：网格歪的歪、转的转</figcaption></figure>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 矩阵作用台<span class="sub">配套项目 VIEW 02</span></div>
+      <div class="body">
+        <p class="do">四个格子填的就是这张表 M：<b>一格一格改</b>，看整张网格怎么被摁弯；拖绿箭头的头改这一捆数 u，也可以直接把 u 的两个数敲进去；下面那行读数把「u 被送到哪儿」写成数——数与图上那支紫箭头是同一件事。</p>
+        <iframe src="views/02-矩阵作用台.html" title="矩阵作用台" style="--h:910px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/02-矩阵作用台.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>现在可以还上一篇文章欠的那笔账了。悬挂系统的规律是位移决定速度、速度决定加速度（第 10 篇那个反例的正式说法），写成相空间的语言：一捆数 (y, v) 进来，被规律作用一次，出去一捆数 (y′, v′)，其中 y′ 就是 v，v′ 由位移与速度按牛顿力学决定。一捆进去、一捆出来——中间那个作用，就是一张表，而表里的四个数，被 m、k、c 这三个内因参数彻底决定。上一篇文章那句“可以写成矩阵形式”，写全了就是这样：</p>
+
+<div class="fm"><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">y′</span><span class="c">v′</span></span><span class="br r"></span></span><span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(2,auto)"><span class="c">0</span><span class="c">1</span><span class="c"><span class="op">−</span>k/m</span><span class="c"><span class="op">−</span>c/m</span></span><span class="br r"></span></span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">y</span><span class="c">v</span></span><span class="br r"></span></span></div>
+
+<figure><img src="图/fig07-弹簧系统的矩阵形式.png" alt="一捆数进去、一捆数出来" loading="lazy"><figcaption>一捆数进去、一捆数出来</figcaption></figure>
+
+<p>所以矩阵凭什么能代表规律？凭的就是：规律作用在一捆数上，而一张表把“任何一捆数进来、哪一捆数出去”整个记了下来。一坨数不会变化，但它记下了变化本身——这跟函数是一个道理，函数也不过是一个记号，记下的却是变量之间的关系。这样的一张表，就是矩阵；矩阵作用在向量上，就是这一站的全部。</p>
+
+<p>下一站看两张表连着摁。两张表连着摁，合起来还是一张表——先摁第一张、再摁第二张，任何一捆数连吃两下，等价于吃一张合起来的表，这就是表相乘，写作 A·B（先摁 B，再摁 A）。意外就在这儿：换个先后，合起来的表往往就变了。拿“转 90°”和“横方向抻 1.6 倍”试：先抻后转，一捆数 (1.3, 0.9) 的终点是一个位置；先转后抻，同样这捆数，终点跑到另一个位置去了。</p>
+
+<figure><img src="图/fig08-先后有别.png" alt="同样两张表，换个先后，终点就不同" loading="lazy"><figcaption>同样两张表，换个先后，终点就不同</figcaption></figure>
+
+<p>日常里这件事我们熟得很：先穿袜子、后穿鞋，人才出得了门；颠倒过来，先穿鞋再穿袜子，谁都做不到。两件事有先后，合起来的结果就不同——表也是这样，顺序也是内容的一部分。算法上怎么算合表？一列一列看：合表的第一列，就是被先摁的那张表的第一列、再被摁一次的结果；第二列同理。算法的口诀爱怎么记怎么记，但别把口诀当意义——意义是“先后两次作用”，不是“行点列”。</p>
+
+<figure><img src="图/fig09-合表的列.png" alt="合表的每一列，就是先摁那张表的对应列再被摁一次" loading="lazy"><figcaption>合表的每一列，就是先摁那张表的对应列再被摁一次</figcaption></figure>
+
+<div class="station tall">
+      <div class="bar"><span class="dot"></span>可交互一站 · 先后有别<span class="sub">配套项目 VIEW 03</span></div>
+      <div class="body">
+        <p class="do">两张表各四个格子。<b>先改 A 再改 B</b>，盯同一个起点被送到哪儿；再把两张表都改成各自方向上的伸缩——谁也别挡谁的路，先后就无所谓了，这就是「顺序有别」的反例。</p>
+        <iframe src="views/03-先后有别.html" title="先后有别" style="--h:890px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/03-先后有别.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>也要说清楚这句话的边界：不是永远不一样。如果两张表都只是各自方向上的伸缩，谁也不挡谁的路，先后就无所谓了——这就是可交换的反例。可见“顺序有别”不是铁律，是常态里的意外；真要什么时候都一样，那才是要专门记住的特殊情形。</p>
+
+<p>第四站是这一篇最要紧的一站。盯着被摁弯的网格看：绝大多数方向都被拧转了，可总有例外——有几个方向，箭头被拉长或者压短，方向却一点儿没变。变了的是长短，没变的是方向，变与不变的矛盾在这个画面上直接摆在眼前。</p>
+
+<figure><img src="图/fig10-变了又没变的方向.png" alt="网格被摁弯，唯独这两条线：方向一点儿没变" loading="lazy"><figcaption>网格被摁弯，唯独这两条线：方向一点儿没变</figcaption></figure>
+
+<p>把这件事说成一句可以自己复述的话：沿着某些方向，作用只是让长短变。写成式子，就是作用之后还跟原来共线、只差一个倍数：<span class="im">Mv<span class="op">=</span>λv</span>——v 是那一捆数，λ 是长短变的倍数。这样的方向，叫做这张表的特征方向；λ 叫做特征值（名字又是后置的，话先说清了才给牌）。找到特征方向有什么用？用处大到离谱：一张表再复杂，沿着特征方向看，它只是几个简单的伸缩；一捆数沿着特征方向的分解，往往就把一团乱麻的运动拆成了几件各自独立、彼此不相干的事。这正是 01 篇那条“线性关系适应叠加原理”的深层面目——各自独立，才能叠加。</p>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 特征方向<span class="sub">配套项目 VIEW 04</span></div>
+      <div class="body">
+        <p class="do">表可以手填，也可以按「弹簧系统（相图）」切成 m、k、c 三个参数。<b>沿着那两条不变的方向拖</b>，箭头只改长短；<b>把阻尼 c 从 0 推过临界</b>，两条实方向就在那一刻冒出来——量变到质变的那个点，能亲手摸到。</p>
+        <iframe src="views/04-特征方向.html" title="特征方向" style="--h:830px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/04-特征方向.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>把这话立刻用到弹簧系统上。无阻尼时，相空间里的运动是一个椭圆，<span class="im">λ<span class="op">=</span>±2i</span>——没有一条不转的方向，可这椭圆我们也不是第一次见：它就是《欧拉公式与拉氏变换》里那个转圈的矢量，边转、不缩（无阻尼，转圈就是全部）。加了阻尼，相图变成一圈圈螺旋，<span class="im">λ<span class="op">=</span><span class="op">−</span>0.2±1.99i</span>：实部是负数，意思是每单位时间整体缩掉 <span class="im">e<sup><span class="op">−</span>0.2t</sup></span>——边转边缩，转圈的是老朋友，缩放也是老朋友（拉氏变换里那个衰减系数）。复数乘法就是旋转加放缩，这句话在 04 篇是结论，在这里成了读相图的眼镜。</p>
+
+<figure><img src="图/fig11-椭圆与螺旋.png" alt="无阻尼是椭圆，小阻尼是螺旋" loading="lazy"><figcaption>无阻尼是椭圆，小阻尼是螺旋</figcaption></figure>
+
+<p>再看一个质变的现场。把阻尼 c 从 0 开始一点点连续增大：c 小的时候，特征方向是复的，一条不转的方向都没有；c 增大到临界值 <span class="im">c<span class="op">=</span>2<span class="sq">√<span class="rad">mk</span></span></span> 那一刻，复方向变成两条实方向——一快一慢，都指着原点；c 再大，相图从螺旋变成“先冲一把、再慢慢爬回去”。c 的变化是连续的、一点点积累的，可“有没有不转的方向”这件事在临界值上突然换了性质：从没有，到有两条。这就是 06 篇讲的量变到质变——奇点不是别的东西，就是质变发生的那个点，这里它有一个可以够得着的名字：临界阻尼。在项目里把 c 的滑条从 0 推到 6，亲手把这个点摸一遍，比读十遍定义都牢。</p>
+
+<p>第五站看面积。一张表摁下去，一块面积的放大倍数是多少？答案是一个数：作用后平行四边形的面积，除以作用前的面积，<span class="im"><span class="frac"><span class="nu">S(<span class="tx">像</span>)</span><span class="de">S(<span class="tx">原</span>)</span></span></span>。对一张表来说它有个干净的算法，<span class="im"><span class="up">det</span>M<span class="op">=</span>ad<span class="op">−</span>bc</span>，这个数有名字，叫行列式。把它连续调小：面积连续变小，这是量变；调到 0 的那一刻，整个平面塌成一条线——这是质变。06 篇说奇点是量变到质变的点，行列式等于 0 就是平面上最干脆的一次质变：二维的系统塌成一维，信息被摁扁，从此反不回去（下一站就讲这个）。还有个细节：放大倍数是负的，不是说面积是负的，是说朝向被翻了面——小旗从顺变逆，像照镜子。倍数取绝对值，朝向另说。</p>
+
+<figure><img src="图/fig12-面积与塌缩.png" alt="面积连续变小，到 0 那一刻质变" loading="lazy"><figcaption>面积连续变小，到 0 那一刻质变</figcaption></figure>
+
+<p>第六站讲反作用。知道秤上的重量，反推原来有几箱货——已知作用的结果，反推作用的原因，这就是解方程 <span class="im">Mx<span class="op">=</span>b</span>：b 是结果，x 是原因。只要没被摁扁（行列式不是 0），原因就唯一，反推得回去，写成 <span class="im">x<span class="op">=</span>M<sup><span class="op">−</span>1</sup>b</span>；摁扁了呢？反推不回去——不是没有原因，是原因有一整条：平面塌成的那条线上，每一捆数都被摁成了同一个 b。作用与反作用本来是一对（07 篇），可反作用能不能成立，全看作用那边有没有把信息摁扁。</p>
+
+<figure><img src="图/fig13-反作用.png" alt="已知结果反推原因：反得回去与反不回去" loading="lazy"><figcaption>已知结果反推原因：反得回去与反不回去</figcaption></figure>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 行列式与反作用<span class="sub">配套项目 VIEW 05</span></div>
+      <div class="body">
+        <p class="do"><b>把「往摁扁的方向走」推到 1</b>，看平行四边形怎么塌成一条线、放大倍数落到 0；再拖一个目标 b 出来，看反推回去是一条唯一的箭头，还是一整条线上的每一捆都行。</p>
+        <iframe src="views/05-行列式与反作用.html" title="行列式与反作用" style="--h:880px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/05-行列式与反作用.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>到这里，一捆数的一生就走完了：两个数并排放，是一捆；一捆被一张表作用；两张表连着摁有先后；被摁弯的网格里有变了又没变的方向；作用把面积放大或摁扁；知道结果还能反推原因。收在这张图上：</p>
+
+<figure><img src="图/fig14-一捆数的一生.png" alt="一捆数的一生" loading="lazy"><figcaption>一捆数的一生</figcaption></figure>
+
+<p>带走三问，比带走名词有用。以后见到任何一捆数，先问：它是怎么被作用的？——找到那张表。再问：哪些方向变了又没变？——找到特征方向，运动再乱也能拆成几件独立的事。最后问：这作用把面积放大还是摁扁？——放大倍数是不是 0，决定这结果反不反得回去。三问问完，一个系统的内因（那张表、表的参数）就摸到大半了。</p>
+
+<p>然后是动手。内因上，改那张表——弹簧系统里就是改 m、k、c，改结构、改阻尼，特征方向与面积放大倍数随之改变，系统的脾气就变了；外因上，换一捆数进去试——换初始状态、换输入那一捆，同一张表、不同外因，走出去的路不同。内因外因都动，才是完整地作用于一个系统，这也和上一篇文章落点在结构、在路面上是一个路子。</p>
+
+<p>深水区照例挖坑，留给番外篇：特征方程怎么解、λ 怎么算出来（<span class="im">λ<sup>2</sup><span class="op">−</span><span class="up">tr</span>·λ<span class="op">+</span><span class="up">det</span><span class="op">=</span>0</span> 摆在这儿，求解留到下一篇）；任意一张表能不能拆成“转圈”加“缩放”的合成，以及为什么相流扫过的面积以 <span class="im">e<sup><span class="up">tr</span>·t</sup></span> 一路缩小（这与上一篇文章的概率云直接相连）；三维与 n 维怎么想象，向量空间、基与维数、线性相关是怎么回事；逆矩阵与解方程组的成法；以及最大的一个坑——用特征方向去看一个系统“稳定不稳定”，那是控制论的正场，我们还一次没进去过。坑都在这儿，一篇一篇填。</p>
+
+<p>这一篇的图与可交互的部分是配套项目：五个视角——向量工场、矩阵作用台、先后有别、特征方向、行列式与反作用——都在本目录的“项目”文件夹里，双击即可打开，全部离线。每个视角都能改条件、看后果，右侧都写着互证与反例；正文里每一张图，都是从项目的同一套数学里算出来的。读到哪儿手痒，就去把那个滑条拉到那儿——比如把 c 推过临界阻尼，把放大倍数摁到 0，把红线上的一个点拖出来看它被摁到哪。外因终究要通过内因起作用，而这里的“通过”，就是读者自己上手的那几下。</p>
+
+  </article>
+
+  <footer>
+    <p>配图与可交互的五站见配套项目 <code>项目/</code>（离线自足，双击即可打开）；配套的 Word 版是 <code>线性代数基础·一捆数与一张表.docx</code>。</p>
+    <p>本页所有曲线与读数可由 <code>tools/render_figures.py</code> 复算；<code>FIG_THEME=dark</code> 出的是本页这套墨底图，浅色那套给 Word。</p>
+    <p>想从头读这一站，进 <a href="index.html">项目导航页</a>；下一篇是 <a href="../控制项目/文章.html">让会倒的东西站住</a>。</p>
+  </footer>
+
+</div>
+</body>
+</html>

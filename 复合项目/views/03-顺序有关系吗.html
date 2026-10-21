@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 03 · 顺序有关系吗 —— 矩阵复合</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<style>
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 1100px) { .duo { grid-template-columns: 1fr; } }
+  .duo .stage h3 { margin: 2px 4px 8px; font-size: 14px; color: var(--ink-soft); font-weight: 600; }
+  .duo .stage h3 b { color: var(--ink); }
+  /* 两张图上下叠时（窄窗口）要一起看见，否则"换了顺序结果就换"没法对照 */
+  .duo .stage canvas { max-height: 34vh; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">矩阵复合 · 视角 03<small>同一支箭头，同一个画框：换先后，终点换不换</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell" style="grid-template-columns: minmax(0,1fr) 360px">
+  <div class="duo">
+    <section class="stage">
+      <h3>先摁 <b>B</b>，再摁 <b>A</b>（合起来写作 A·B）</h3>
+      <canvas id="cv1" height="440"></canvas>
+    </section>
+    <section class="stage">
+      <h3>先摁 <b>A</b>，再摁 <b>B</b>（合起来写作 B·A）</h3>
+      <canvas id="cv2" height="440"></canvas>
+    </section>
+  </div>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">两张表连着摁，合起来还是一张表——这张合表就是图里那层紫网格。意外在于：把先后换一换，合出来的那层紫网格往往就变了，终点也换地方。</p>
+
+    <div class="ctl">
+      <label>表 A</label>
+      <div class="matgrid">
+        <input type="number" id="aa" step="0.1" value="0">
+        <input type="number" id="ab" step="0.1" value="-1">
+        <input type="number" id="ac" step="0.1" value="1">
+        <input type="number" id="ad" step="0.1" value="0">
+      </div>
+    </div>
+    <div class="ctl">
+      <label>表 B</label>
+      <div class="matgrid">
+        <input type="number" id="ba" step="0.1" value="1">
+        <input type="number" id="bb" step="0.1" value="1">
+        <input type="number" id="bc" step="0.1" value="0">
+        <input type="number" id="bd" step="0.1" value="1">
+      </div>
+    </div>
+
+    <div class="btnrow" id="presets"></div>
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>日常那句话：</b>先穿袜子、后穿鞋，人才出得了门；颠倒过来，先穿鞋再穿袜子，谁都做不到。两件事有先后，合起来的结果就不同——表也是这样。</p>
+    <p class="note" id="commuteNote" style="display:none;border-color:var(--u)"><b>反例（边界）：</b>这一对表恰好可交换——两张表谁也不挡谁的路，先后就无所谓了。可见"顺序有别"是常态里的意外，不是每条都成立。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>记法：A·B 表示先摁 B 再摁 A。两张图共用同一个画框，好直接对读终点。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var v1 = D.create(document.getElementById("cv1"), { range: 4, pad: 30 });
+  var v2 = D.create(document.getElementById("cv2"), { range: 4, pad: 30 });
+
+  var C = { x: "#0e7490", mx: "#7c5cbf", mid: "#b7791f", ghost: "#aeb9c8" };
+  var state = { A: L.mat(0, -1, 1, 0), B: L.mat(1, 1, 0, 1) };
+  var x0 = L.vec(1.3, 0.9);
+
+  function col1(M) { return L.vec(M.a, M.c); }
+  function col2(M) { return L.vec(M.b, M.d); }
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+  var presets = [
+    { label: "剪切 ↦ 转90°（视频那一对）", A: L.mat(0, -1, 1, 0), B: L.mat(1, 1, 0, 1) },
+    { label: "转90° ↦ 剪切（换个先后）", A: L.mat(1, 1, 0, 1), B: L.mat(0, -1, 1, 0) },
+    { label: "一对角（可交换的反例）", A: L.mat(2, 0, 0, 1), B: L.mat(1, 0, 0, 3) },
+    { label: "旋转 × 均匀缩放（可交换）", A: L.mat(0, -1, 1, 0), B: L.mat(1.5, 0, 0, 1.5) },
+    { label: "视频算例 M1 ↦ M2", A: L.mat(0, 2, 1, 0), B: L.mat(1, -2, 1, 0) }
+  ];
+  var box = document.getElementById("presets");
+  presets.forEach(function (p) {
+    var b = document.createElement("button");
+    b.textContent = p.label;
+    b.addEventListener("click", function () { state.A = p.A; state.B = p.B; syncInputs(); draw(); });
+    box.appendChild(b);
+  });
+
+  function read() {
+    state.A = L.mat(num("aa"), num("ab"), num("ac"), num("ad"));
+    state.B = L.mat(num("ba"), num("bb"), num("bc"), num("bd"));
+  }
+  function syncInputs() {
+    document.getElementById("aa").value = +state.A.a.toFixed(2);
+    document.getElementById("ab").value = +state.A.b.toFixed(2);
+    document.getElementById("ac").value = +state.A.c.toFixed(2);
+    document.getElementById("ad").value = +state.A.d.toFixed(2);
+    document.getElementById("ba").value = +state.B.a.toFixed(2);
+    document.getElementById("bb").value = +state.B.b.toFixed(2);
+    document.getElementById("bc").value = +state.B.c.toFixed(2);
+    document.getElementById("bd").value = +state.B.d.toFixed(2);
+  }
+  ["aa", "ab", "ac", "ad", "ba", "bb", "bc", "bd"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () { read(); draw(); });
+  });
+
+  /* 先摁 first、再摁 second；合表＝second·first（记法：从右往左读）。 */
+  function geom(first, second) {
+    var p1 = L.apply(first, x0);
+    return { p1: p1, p2: L.apply(second, p1), comp: L.mul(second, first) };
+  }
+
+  function panel(view, g, R) {
+    view.setRange(R);
+    var step = D.gridStep(R);
+    view.clear(); view.grid({ step: step });
+    view.warpGrid(g.comp, { step: step, color: C.mx, alpha: 0.30, width: 1 });
+
+    view.line(x0, g.p1, { color: C.ghost, width: 1.6, dash: [5, 4] });
+    view.line(g.p1, g.p2, { color: C.ghost, width: 1.6, dash: [5, 4] });
+    view.arrow(L.vec(0, 0), x0, { color: C.x, width: 2.4 });
+    view.text(x0, "x", { color: C.x, dx: 8, dy: 12 });
+    view.dot(g.p1, { color: C.mid, r: 4.5 });
+    view.text(g.p1, "中间", { color: C.mid, dx: 9, dy: 15 });
+    view.arrow(L.vec(0, 0), g.p2, { color: C.mx, width: 3 });
+    view.dot(g.p2, { color: C.mx, r: 5.5 });
+    view.text(g.p2, "终点", { color: C.mx, dx: 11, dy: 4, bold: true });
+  }
+
+  function draw() {
+    var g1 = geom(state.B, state.A);   // 先 B 后 A → A·B
+    var g2 = geom(state.A, state.B);   // 先 A 后 B → B·A
+    // 两张图共用同一个画框：这一站要比的正是终点位置，各自取景就对不上了
+    var R = Math.max(
+      D.fitRange([x0, g1.p1, g1.p2, col1(g1.comp), col2(g1.comp)]),
+      D.fitRange([x0, g2.p1, g2.p2, col1(g2.comp), col2(g2.comp)])
+    );
+    panel(v1, g1, R);
+    panel(v2, g2, R);
+
+    var AB = g1.comp, BA = g2.comp;
+    var same = L.eqm(AB, BA);
+    var d1 = L.apply(AB, x0), d2 = L.apply(BA, x0);
+    document.getElementById("ro").innerHTML =
+      "A·B = [ " + AB.a.toFixed(2) + "  " + AB.b.toFixed(2) + " ]\n" +
+      "      [ " + AB.c.toFixed(2) + "  " + AB.d.toFixed(2) + " ]\n" +
+      "B·A = [ " + BA.a.toFixed(2) + "  " + BA.b.toFixed(2) + " ]\n" +
+      "      [ " + BA.c.toFixed(2) + "  " + BA.d.toFixed(2) + " ]\n" +
+      (same ? "<span class='ok'>这一对可交换：</span>两张合表的数完全一样。"
+            : "<span class='bad'>顺序有别：</span>两张合表的数不一样，终点的位置也不同。") + "\n" +
+      "画框 ±" + R + "（两张图共用，好直接对读终点）\n" +
+      "互证：左图两步走的终点 (" + g1.p2.x.toFixed(3) + ", " + g1.p2.y.toFixed(3) + ")\n" +
+      "      ＝ 直接用 A·B 摁一下 (" + d1.x.toFixed(3) + ", " + d1.y.toFixed(3) + ")";
+    document.getElementById("commuteNote").style.display = same ? "block" : "none";
+  }
+
+  window.addEventListener("resize", function () { v1.resize(); v2.resize(); draw(); });
+  syncInputs(); v1.resize(); v2.resize(); draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 04 · 变了又没变的方向 —— 线性代数基础</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">线性代数基础 · 视角 04<small>网格被摁弯时，大多数方向都转了——唯独有几个方向，只伸缩，不转向</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--red)"></i>变了又没变的方向（特征方向）</span>
+      <span><i class="dot" style="background:var(--ghost)"></i>没被作用的底板网格</span>
+      <span><i class="dot" style="background:var(--purple)"></i>被摁弯的网格</span>
+      <span style="margin-left:auto">红线上拖一个点出来，看它被摁到哪</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">一张表摁下去，网格歪的歪、转的转。可总有几个方向是例外：箭头被拉长或压短，方向却一点儿没变。这样的方向，就是这张表的骨头。</p>
+
+    <div class="btnrow" id="modes">
+      <button id="mGeneral" class="on">一般表</button>
+      <button id="mSpring">弹簧系统（相图）</button>
+    </div>
+
+    <div id="generalBox">
+      <div class="ctl">
+        <label>这张表 M</label>
+        <div class="matgrid">
+          <input type="number" id="ma" step="0.1" value="2">
+          <input type="number" id="mb" step="0.1" value="0.9">
+          <input type="number" id="mc" step="0.1" value="0.9">
+          <input type="number" id="md" step="0.1" value="1.3">
+        </div>
+      </div>
+      <div class="btnrow" id="presets"></div>
+    </div>
+
+    <div id="springBox" style="display:none">
+      <div class="ctl">
+        <label>质量 m <output id="mOut">1.0</output></label>
+        <input type="range" id="sm" min="0.4" max="3" step="0.1" value="1">
+      </div>
+      <div class="ctl">
+        <label>弹簧系数 k <output id="kOut">4.0</output></label>
+        <input type="range" id="sk" min="0.5" max="9" step="0.1" value="4">
+      </div>
+      <div class="ctl">
+        <label>阻尼 c <output id="cOut">0.4</output></label>
+        <input type="range" id="sc" min="0" max="6" step="0.1" value="0.4">
+      </div>
+      <p class="note" id="critNote" style="margin-top:4px"></p>
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>反例（边界）：</b>选"转 90°"试试——每个方向都被拧转了，一个不转的方向都没有。选"摁扁"试试——有个方向的长度被乘成 0，整条被送回原点。<b>不是每张表都有中用的方向，也不是每个方向都中用。</b></p>
+    <p class="note" id="springNote" style="display:none"><b>复方向的读法（第 04、05 篇的老朋友）：</b>没有不转的方向时，方向在"转圈"——复数乘法就是旋转加放缩。λ = re ± i·im 的意思：每单位时间转 im 弧度，整体再缩 e 的 re 次方倍。无阻尼的椭圆＝纯转圈；一圈圈螺旋＝边转边缩。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：M 一张表；λ 特征方向上的放大倍数；弹簧系统 m、k、c 与第 10 篇一致。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 4.2, pad: 34 });
+
+  var state = { mode: "general", M: L.mat(2, 0.9, 0.9, 1.3), m: 1, k: 4, c: 0.4 };
+  var probe = null; // 红线上拖出来的点
+
+  document.getElementById("mGeneral").addEventListener("click", function () { setMode("general"); });
+  document.getElementById("mSpring").addEventListener("click", function () { setMode("spring"); });
+  function setMode(md) {
+    state.mode = md;
+    document.getElementById("mGeneral").classList.toggle("on", md === "general");
+    document.getElementById("mSpring").classList.toggle("on", md === "spring");
+    document.getElementById("generalBox").style.display = md === "general" ? "block" : "none";
+    document.getElementById("springBox").style.display = md === "spring" ? "block" : "none";
+    document.getElementById("springNote").style.display = md === "spring" ? "block" : "none";
+    probe = null;
+    draw();
+  }
+
+  var presetNames = ["diag21", "sym", "shear", "rotate90", "rotScale", "squash", "flip"];
+  var box = document.getElementById("presets");
+  presetNames.forEach(function (k) {
+    var b = document.createElement("button");
+    b.textContent = L.PRESETS[k].label;
+    b.addEventListener("click", function () { state.M = L.PRESETS[k].m; syncInputs(); draw(); });
+    box.appendChild(b);
+  });
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+  ["ma", "mb", "mc", "md"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      state.M = L.mat(num("ma"), num("mb"), num("mc"), num("md")); draw();
+    });
+  });
+  function syncInputs() {
+    document.getElementById("ma").value = +state.M.a.toFixed(2);
+    document.getElementById("mb").value = +state.M.b.toFixed(2);
+    document.getElementById("mc").value = +state.M.c.toFixed(2);
+    document.getElementById("md").value = +state.M.d.toFixed(2);
+  }
+  ["sm", "sk", "sc"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      state.m = num("sm"); state.k = num("sk"); state.c = num("sc");
+      document.getElementById("mOut").textContent = state.m.toFixed(1);
+      document.getElementById("kOut").textContent = state.k.toFixed(1);
+      document.getElementById("cOut").textContent = state.c.toFixed(1);
+      draw();
+    });
+  });
+
+  function toWorld(e) {
+    var r = canvas.getBoundingClientRect();
+    return { x: view.wx(e.clientX - r.left), y: view.wy(e.clientY - r.top) };
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    if (state.mode !== "general") return;
+    var p = toWorld(e);
+    var eig = L.eigen(state.M);
+    var onLine = false;
+    if (eig.type === "real") {
+      [eig.v1, eig.v2].forEach(function (v) {
+        if (!v) return;
+        var t = p.x * v.x + p.y * v.y;
+        var foot = L.scale(v, t);
+        if (L.dist(p, foot) < 0.4) onLine = true;
+      });
+    }
+    if (onLine) { probe = clampProbe(p, state.M); canvas.setPointerCapture(e.pointerId); draw(); }
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!probe) return;
+    var p = toWorld(e);
+    var eig = L.eigen(state.M);
+    var best = null, bd = 1e9;
+    [eig.v1, eig.v2].forEach(function (v) {
+      if (!v) return;
+      var foot = L.scale(v, p.x * v.x + p.y * v.y);
+      var d = L.dist(p, foot);
+      if (d < bd) { bd = d; best = foot; }
+    });
+    probe = clampProbe(best, state.M);
+    draw();
+  });
+  canvas.addEventListener("pointerup", function () { probe = null; draw(); });
+
+  /* 自检要看得见结果：把红线上的点限制在"M·p 仍在画框里"的行程内。
+     这一站不动画框——画里还有一张必须原地对读的单位网格，
+     标尺一动，"网格被摁弯了多少"就失去了参照。
+     取景与对象不能都动：要么取景跟对象走（01/02/03/05），要么对象让着取景（这里）。 */
+  function clampProbe(p, M) {
+    var n = L.norm(p);
+    if (n < 1e-9) return p;
+    var Mp = L.apply(M, p);
+    var far = Math.max(Math.abs(Mp.x), Math.abs(Mp.y));
+    var lim = view.range() * 0.88;
+    return far <= lim ? p : L.scale(p, lim / far);   // M 是线性的：缩 p 就等比例缩 Mp
+  }
+
+  function gridOf(M, color, alpha, dash) {
+    // 铺满画框：网格多大取自取景，写死 4.2 的话画框一放大就只剩中间一块
+    var R = view.reach() * 1.15, ctx = view.ctx;
+    ctx.save();
+    ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.globalAlpha = alpha;
+    if (dash) ctx.setLineDash(dash);
+    ctx.beginPath();
+    for (var i = -Math.ceil(R); i <= Math.ceil(R); i++) {
+      var a = L.apply(M, L.vec(-R, i)), b = L.apply(M, L.vec(R, i));
+      ctx.moveTo(view.sx(a.x), view.sy(a.y)); ctx.lineTo(view.sx(b.x), view.sy(b.y));
+      var c = L.apply(M, L.vec(i, -R)), d = L.apply(M, L.vec(i, R));
+      ctx.moveTo(view.sx(c.x), view.sy(c.y)); ctx.lineTo(view.sx(d.x), view.sy(d.y));
+    }
+    ctx.stroke(); ctx.restore();
+  }
+
+  function drawEigenLines(eig, M) {
+    if (eig.type !== "real") return;
+    // "一整条"要贯穿画框：线长取自取景，箭头长度取画框半高的一半
+    var span = view.reach() * 1.02, tipLen = view.range() * 0.5;
+    var dirs = [{ v: eig.v1, l: eig.l1 }, { v: eig.v2, l: eig.l2 }];
+    dirs.forEach(function (d) {
+      if (!d.v) return;
+      view.line(L.scale(d.v, -span), L.scale(d.v, span), { color: D.C.red, width: 1.6, dash: [7, 5] });
+      var tip = L.scale(d.v, tipLen);
+      view.arrow(L.vec(0, 0), tip, { color: D.C.red, width: 2 });
+      view.text(tip, "λ=" + d.l.toFixed(2), { color: D.C.red, dx: 8, dy: -6, mono: true });
+    });
+  }
+
+  function drawGeneral() {
+    view.clear(); view.grid({ step: 1 });
+    var M = state.M, eig = L.eigen(M);
+    gridOf(M, D.C.purple, 0.30);
+    drawEigenLines(eig, M);
+
+    if (probe) {
+      var Mp = L.apply(M, probe);
+      view.arrow(L.vec(0, 0), probe, { color: D.C.ink, width: 2.2 });
+      view.arrow(L.vec(0, 0), Mp, { color: D.C.red, width: 3 });
+      view.dot(Mp, { color: D.C.red, r: 5 });
+      var ang = Math.acos(Math.max(-1, Math.min(1, L.dot(probe, Mp) / (L.norm(probe) * L.norm(Mp) || 1e-9)))) * 180 / Math.PI;
+      var ratio = L.norm(Mp) / (L.norm(probe) || 1e-9);
+      var lam = (eig.type === "real")
+        ? (Math.abs(ratio - eig.l1) < Math.abs(ratio - eig.l2) ? eig.l1 : eig.l2) : null;
+      var ro = document.getElementById("ro");
+      var lim = view.range() * 0.88;
+      var atLimit = Math.max(Math.abs(Mp.x), Math.abs(Mp.y)) >= lim - 1e-6;
+      ro.innerHTML =
+        "M = [ " + M.a.toFixed(2) + "  " + M.b.toFixed(2) + " ]\n" +
+        "    [ " + M.c.toFixed(2) + "  " + M.d.toFixed(2) + " ]\n" +
+        (eig.type === "real"
+          ? "<span class='ok'>自检（红线上随便拖一个点）：</span>被摁以后方向偏了 " + ang.toFixed(2) +
+            "°，长度变成原来的 " + ratio.toFixed(3) + " 倍，正是这条线上的 λ＝" + lam.toFixed(3) + "。\n" +
+            "换个不在红线上的点试试——方向说转就转。"
+          : "<span class='warn'>没有不转的方向：</span>这张表的特征方程没有实数解（λ = " + eig.re.toFixed(2) + " ± " + eig.im.toFixed(2) + "i），" +
+            "每个方向都被拧转了——它是在转圈，不是不转。") +
+        "\n画框 ±" + view.range() +
+        (atLimit ? "：已经拖到行程尽头——再往外，被摁后的像就出了画框。这里不放大画框，好让底板网格一直当标尺。" : "（固定：底板网格要原地对读）");
+      return;
+    }
+
+    var ro = document.getElementById("ro");
+    ro.innerHTML =
+      "M = [ " + M.a.toFixed(2) + "  " + M.b.toFixed(2) + " ]\n" +
+      "    [ " + M.c.toFixed(2) + "  " + M.d.toFixed(2) + " ]   det = " + L.det(M).toFixed(3) + "\n" +
+      (eig.type === "real"
+        ? "两条不转的方向，λ = " + eig.l1.toFixed(3) + " 与 " + eig.l2.toFixed(3) +
+          "。<span class='ok'>到红线上拖一个点出来</span>，看它被摁到哪。"
+        : "没有不转的方向（λ = " + eig.re.toFixed(2) + " ± " + eig.im.toFixed(2) + "i）。切到弹簧系统，看复方向怎么读。") +
+      "\n画框 ±" + view.range() + "：本视角画框固定，底板网格要原地当标尺（红线上的自检点改由行程限制）。";
+  }
+
+  function drawSpring() {
+    view.clear(); view.grid({ step: 1 });
+    var m = state.m, k = state.k, c = state.c;
+    var A = L.mat(0, 1, -k / m, -c / m);
+    var eig = L.eigen(A);
+    var T = eig.type === "complex" ? 8 : 6;
+
+    // 向量场：每个点都有自己的方向（第 10 篇的老朋友）
+    var ctx = view.ctx;
+    ctx.save();
+    ctx.strokeStyle = D.C.v; ctx.globalAlpha = 0.35; ctx.lineWidth = 1;
+    for (var gx = -3; gx <= 3; gx += 1.5) {
+      for (var gy = -3; gy <= 3; gy += 1.5) {
+        var p = L.vec(gx, gy), q = L.apply(A, p);
+        var n = L.norm(q);
+        if (n < 1e-6) continue;
+        var tip = L.add(p, L.scale(q, 0.32 / n));
+        ctx.beginPath();
+        ctx.moveTo(view.sx(p.x), view.sy(p.y));
+        ctx.lineTo(view.sx(tip.x), view.sy(tip.y));
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    // 相流：从几个初值出发的轨迹
+    var starts = [];
+    for (var i = 0; i < 6; i++) {
+      var a = i * Math.PI / 3;
+      starts.push(L.vec(1.8 * Math.cos(a), 1.8 * Math.sin(a)));
+    }
+    if (eig.type === "real" && eig.v1 && eig.v2) {
+      starts.push(L.scale(eig.v1, 1.8), L.scale(eig.v2, 1.8));
+    }
+    starts.forEach(function (s) {
+      var pts = [];
+      for (var t = 0; t <= T + 1e-9; t += T / 220) {
+        pts.push(L.apply(L.expm2(A, t), s));
+      }
+      ctx.save();
+      ctx.strokeStyle = D.C.purple; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.moveTo(view.sx(pts[0].x), view.sy(pts[0].y));
+      for (var j = 1; j < pts.length; j++) ctx.lineTo(view.sx(pts[j].x), view.sy(pts[j].y));
+      ctx.stroke(); ctx.restore();
+      view.dot(s, { color: D.C.u, r: 3.5 });
+    });
+    if (eig.type === "real") drawEigenLines(eig, A);
+
+    // 读数与互证
+    var ccrit = 2 * Math.sqrt(m * k);
+    var over = c > ccrit + 1e-9;
+    document.getElementById("critNote").innerHTML =
+      "临界阻尼 c = 2√(mk) = " + ccrit.toFixed(2) + "。当前 c = " + c.toFixed(1) +
+      (over ? "：<b>越过了临界值</b>——不转的方向回来了（两条，一快一慢）。" :
+              "：<b>还没到临界值</b>——没有不转的方向，运动是边转边缩的螺旋。") +
+      " <b>c 一点点连续增大，到临界值那一刻，" +
+      (over ? "复方向变成了两条实方向。" : "两条实方向将变成复方向。") + "量变到质变。</b>";
+
+    var ro = document.getElementById("ro");
+    var lamText;
+    if (eig.type === "complex") {
+      lamText = "λ = " + eig.re.toFixed(3) + " ± " + eig.im.toFixed(3) + "i（没有不转的方向）";
+    } else if (eig.type === "real") {
+      lamText = "λ = " + eig.l1.toFixed(3) + " 与 " + eig.l2.toFixed(3) + "（两条不转的方向）";
+    } else {
+      lamText = "λ = " + eig.l.toFixed(3) + "（重根，只剩一个方向）";
+    }
+    var ET = L.expm2(A, T);
+    ro.innerHTML =
+      "m = " + m.toFixed(1) + "  k = " + k.toFixed(1) + "  c = " + c.toFixed(1) +
+      "   ω = √(k/m) = " + Math.sqrt(k / m).toFixed(3) + "\n" + lamText + "\n" +
+      "<span class='ok'>互证：</span>摁了 " + T + " 个单位时间，相面积变成 " + L.det(ET).toFixed(4) +
+      " 倍；另一条路，e 的 trace·t 次方 = e^" + (L.trace(A) * T).toFixed(3) + " = " +
+      Math.exp(L.trace(A) * T).toFixed(4) + "。两条路同一个数。";
+  }
+
+  function draw() {
+    if (state.mode === "general") drawGeneral(); else drawSpring();
+  }
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  syncInputs(); view.resize(); draw();
+})();
+</script>
+</body>
+</html>

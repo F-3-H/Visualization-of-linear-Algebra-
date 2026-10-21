@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 05 · 面积、塌缩与反作用 —— 线性代数基础</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">线性代数基础 · 视角 05<small>摁一下，面积放大多少；摁到 0，平面塌成一条线；知道结果，怎么反推原因</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--u)"></i>作用前的单位正方形（带小旗，看朝向）</span>
+      <span><i class="dot" style="background:var(--purple)"></i>作用后的像 / 反推回去的 x</span>
+      <span><i class="dot" style="background:var(--red)"></i>被摁扁的方向（一整条都去原点）</span>
+      <span style="margin-left:auto">拖动紫色的目标 b，看反推的 x 去哪</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">一张表摁下去，一块面积的放大倍数是一个数——面积放大倍数。把它连续调小，面积连续变小；调到 0 的那一刻，整个平面塌成一条线。这就是量变到了质变。</p>
+
+    <div class="ctl">
+      <label>底板表 M₀</label>
+      <div class="matgrid">
+        <input type="number" id="ma" step="0.1" value="1.4">
+        <input type="number" id="mb" step="0.1" value="0.6">
+        <input type="number" id="mc" step="0.1" value="0.3">
+        <input type="number" id="md" step="0.1" value="0.9">
+      </div>
+    </div>
+
+    <div class="ctl">
+      <label>往摁扁的方向走 <output id="tOut">0%</output></label>
+      <input type="range" id="tslide" min="0" max="1" step="0.001" value="0">
+    </div>
+
+    <div class="ctl">
+      <label>目标 b（反推：哪一捆被摁成了它）</label>
+      <div class="row">
+        <input type="number" id="bx" step="0.1" value="1.5">
+        <input type="number" id="by" step="0.1" value="1.1">
+      </div>
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note" id="colNote" style="display:none;border-color:var(--red)"><b>质变：</b>放大倍数变成 0——平面塌成一条线，方向只剩一个。此时<b>反推不回去了</b>：不是没有原因，是原因有一整条，图上一整条点都被摁成了同一个 b。</p>
+    <p class="note"><b>翻面：</b>放大倍数变负，不等于面积是负的——是像被翻了个面（小旗从顺变逆）。倍数取绝对值，朝向另说。</p>
+    <p class="note"><b>反作用：</b>知道秤上的重量，反推原来几箱货——这就是解方程。只要没被摁扁（放大倍数不是 0），原因唯一；摁扁了，一整条原因给出同一个结果。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：b 目标；x = M⁻¹b 反推的原因；det(M) 面积放大倍数。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 4.2, pad: 34 });
+
+  var SQUASH = L.mat(1, 0.5, 2, 1); // 终点：一个被摁扁的表（det=0）
+  var state = { M0: L.mat(1.4, 0.6, 0.3, 0.9), t: 0, b: L.vec(1.5, 1.1) };
+  var dragB = false, frozenRange = null;
+
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+  function currentM() {
+    return L.mat((1 - state.t) * state.M0.a + state.t * SQUASH.a,
+                 (1 - state.t) * state.M0.b + state.t * SQUASH.b,
+                 (1 - state.t) * state.M0.c + state.t * SQUASH.c,
+                 (1 - state.t) * state.M0.d + state.t * SQUASH.d);
+  }
+  ["ma", "mb", "mc", "md"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      state.M0 = L.mat(num("ma"), num("mb"), num("mc"), num("md")); draw();
+    });
+  });
+  var tslide = document.getElementById("tslide");
+  tslide.addEventListener("input", function () {
+    state.t = parseFloat(tslide.value);
+    document.getElementById("tOut").textContent = Math.round(state.t * 100) + "%";
+    draw();
+  });
+  ["bx", "by"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      state.b = L.vec(num("bx"), num("by")); draw();
+    });
+  });
+
+  function toWorld(e) {
+    var r = canvas.getBoundingClientRect();
+    return { x: view.wx(e.clientX - r.left), y: view.wy(e.clientY - r.top) };
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    var p = toWorld(e);
+    if (L.dist(p, state.b) < 0.5) {
+      dragB = true;
+      frozenRange = view.range();     // 拖动期间画框冻结，免得鼠标底下的 b 自己跑
+      canvas.setPointerCapture(e.pointerId); draw();
+    }
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!dragB) return;
+    var p = toWorld(e);
+    state.b = L.vec(Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10);
+    document.getElementById("bx").value = state.b.x.toFixed(2);
+    document.getElementById("by").value = state.b.y.toFixed(2);
+    draw();
+  });
+  canvas.addEventListener("pointerup", function () {
+    if (dragB) { dragB = false; frozenRange = null; draw(); }   // 松手后按新内容重新取景
+  });
+
+  function shoelace(pts) {
+    var s = 0;
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i], q = pts[(i + 1) % pts.length];
+      s += p.x * q.y - q.x * p.y;
+    }
+    return s / 2; // 带符号：负 = 朝向被翻
+  }
+
+  /* 把标签放在这条射线上"离画框边界还留一截"的地方。
+     注意画框横竖不等宽（横向按画布比例放宽），沿单位方向走固定距离，
+     会从短的那一边出去——上一版把标签放在 0.78×最长边 处，
+     画框一变成 ±4（横 ±6），竖直方向的标签就掉到画外去了。 */
+  function onRay(dir, frac) {
+    var e = view.extent();
+    var k = Math.min(
+      Math.abs(dir.x) > 1e-9 ? Math.abs(e.x1 / dir.x) : Infinity,
+      Math.abs(dir.y) > 1e-9 ? Math.abs(e.y1 / dir.y) : Infinity);
+    return L.scale(dir, k * (frac == null ? 0.8 : frac));
+  }
+  /* 文字往哪边长：锚点在哪半边就往反方向铺，免得整句越出画框 */
+  function sideAlign(p) {
+    return p.x >= 0 ? { align: "right", dx: -6 } : { align: "left", dx: 6 };
+  }
+
+  function draw() {
+    var M = currentM(), d = L.det(M), b = state.b;
+
+    // 作用前的单位正方形（带小旗）
+    var sq = [L.vec(0, 0), L.vec(1, 0), L.vec(1, 1), L.vec(0, 1)];
+    var flag = [L.vec(0.5, 1), L.vec(0.72, 1), L.vec(0.5, 1.32)];
+    var sqImg = sq.map(function (p) { return L.apply(M, p); });
+    var flagImg = flag.map(function (p) { return L.apply(M, p); });
+
+    var x = L.solve(M, b);
+    var singular = Math.abs(d) < 1e-9;
+
+    /* 秩 1 的现场：b 若落在像里，原因有一整条——那一支（xp）也是要看见的东西，
+       所以先在下面算出来，跟 b、x 一起交给取景；不然它自己会跑到画外。 */
+    var alt = null;
+    if (!x && singular) {
+      var row1 = L.vec(M.a, M.b), row2 = L.vec(M.c, M.d);
+      var n1sq = row1.x * row1.x + row1.y * row1.y;
+      if (n1sq > 1e-9) {
+        var kk = (row1.x * row2.x + row1.y * row2.y) / n1sq;   // 像就是 (1, kk) 这一条
+        alt = { row1: row1, inImage: Math.abs(b.y - kk * b.x) < 0.35 };  // 0.35 是视觉宽容
+        if (alt.inImage) alt.xp = L.scale(row1, b.x / n1sq);
+      }
+    }
+
+    /* 取景跟内容走：b 是读者敲的、也可以直接拖，没有上界；M 的四个数同样。
+       "反推回去的那一捆 x"与"被摁成什么样"都随它们涨落，画框写死 4.2 的话，
+       b 一放大，这一站的结论就整体跑到画外——读数里有、图上没有。
+       单位正方形与它的像也一并装进去，面积倍数要能当场对读。 */
+    var R = frozenRange == null
+      ? D.fitRange([b, x, alt && alt.xp].concat(sq, flag, sqImg, flagImg))
+      : frozenRange;
+    view.setRange(R);
+
+    view.clear(); view.grid({ step: D.gridStep(R) });
+    var reach = view.reach() * 1.06;   // "一整条"要画满画框：长度取自取景，不写死
+
+    view.poly(sq, { fill: "rgba(14,159,110,0.07)", stroke: D.C.u, width: 1.2 });
+    view.poly(flag, { fill: "rgba(14,159,110,0.25)", stroke: D.C.u, width: 1 });
+    view.poly(sqImg, { fill: "rgba(124,92,191,0.10)", stroke: D.C.purple, width: 1.8 });
+    view.poly(flagImg, { fill: "rgba(124,92,191,0.28)", stroke: D.C.purple, width: 1 });
+
+    // 被摁扁的方向（kernel）与它的一整条
+    if (singular) {
+      var row = L.norm(L.vec(M.a, M.b)) > 1e-9 ? L.vec(M.a, M.b) : L.vec(M.c, M.d);
+      if (L.norm(row) > 1e-9) {
+        var n = L.normalize(L.vec(-row.y, row.x));
+        view.line(L.scale(n, -reach), L.scale(n, reach), { color: D.C.red, width: 1.6, dash: [7, 5] });
+        var lp = onRay(n, 0.78), sa = sideAlign(lp);
+        view.text(lp, "被摁扁的方向：整条都去原点", { color: D.C.red, align: sa.align, dx: sa.dx, dy: -10 });
+      } else {
+        view.text(L.vec(0, view.extent().y0 * 0.86), "四个数全是 0：所有箭头都送回原点",
+          { color: D.C.red, align: "center" });
+      }
+    }
+
+    // 目标 b 与反推
+    view.arrow(L.vec(0, 0), b, { color: D.C.ink, width: 2.4 });
+    view.dot(b, { color: D.C.ink, r: 5 });
+    view.text(b, "b", { color: D.C.ink, dx: 9, dy: -8, bold: true });
+
+    if (x) {
+      view.arrow(L.vec(0, 0), x, { color: D.C.purple, width: 3 });
+      view.text(x, "x（反推回去的一捆）", { color: D.C.purple, dx: 10, dy: 14, bold: true });
+    } else if (alt && alt.inImage) {
+      var nn = L.normalize(L.vec(-alt.row1.y, alt.row1.x));
+      view.line(L.add(alt.xp, L.scale(nn, -reach)), L.add(alt.xp, L.scale(nn, reach)),
+        { color: D.C.purple, width: 1.6, dash: [2, 4] });
+      view.arrow(L.vec(0, 0), alt.xp, { color: D.C.purple, width: 2.6 });
+      var sa2 = sideAlign(alt.xp);
+      view.text(alt.xp, "原因有一整条", { color: D.C.purple, align: sa2.align, dx: sa2.dx, dy: 16 });
+    } else if (alt) {
+      view.text(L.vec(0, view.extent().y0 * 0.86), "这个 b 压根不在像里——任何一捆都摁不成它",
+        { color: D.C.red, align: "center" });
+    }
+
+    var area = shoelace(sqImg);
+    var ro = document.getElementById("ro");
+    ro.innerHTML =
+      "M(t) = [ " + M.a.toFixed(2) + "  " + M.b.toFixed(2) + " ]\n" +
+      "       [ " + M.c.toFixed(2) + "  " + M.d.toFixed(2) + " ]\n" +
+      "面积放大倍数 det = " + d.toFixed(3) + (d < 0 ? "（负：朝向被翻）" : "") + "\n" +
+      "画框 ±" + R + "（自动装下 b、反推的那一捆与单位正方形的像）\n" +
+      "<span class='ok'>互证：</span>图上量出像的面积 " + Math.abs(area).toFixed(3) +
+      " ＝ 作用前 1 × |det| = " + Math.abs(d).toFixed(3) +
+      (x ? "；反推的 x 再摁一遍 M·x = (" + L.apply(M, x).x.toFixed(3) + ", " + L.apply(M, x).y.toFixed(3) + ") ＝ b。" : "。");
+    document.getElementById("colNote").style.display = singular ? "block" : "none";
+  }
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

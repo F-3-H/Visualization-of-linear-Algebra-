@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>矩阵复合 · 可视化项目</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .hero { max-width: 1280px; margin: 0 auto; padding: 26px 18px 6px; }
+  .hero h1 { font-size: 22px; margin: 0 0 6px; }
+  .hero p { color: var(--ink-soft); margin: 0 0 4px; max-width: 780px; }
+  .views {
+    max-width: 1280px; margin: 14px auto; padding: 0 18px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px;
+  }
+  .vcard {
+    display: block; text-decoration: none; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px; transition: border-color .15s;
+  }
+  .vcard:hover { border-color: var(--v); }
+  .vcard .no { font-family: var(--mono); color: var(--v); font-size: 12px; letter-spacing: 1px; }
+  .vcard h3 { margin: 4px 0 6px; font-size: 16px; }
+  .vcard p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+  .vcard .go { margin-top: 10px; font-size: 13px; color: var(--v); }
+  .notation { max-width: 1280px; margin: 6px auto 0; padding: 0 18px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">矩阵复合 · 可视化项目<small>把"摁一下"当成一段路：连着摁两下，顺序要紧吗</small></div>
+</header>
+
+<section class="hero">
+  <h1>一张表是"摁一下"，两张表连着摁是一段两截的路</h1>
+  <p>这一套四个视角，讲的是 3Blue1Brown《线性代数的本质》第四集里那件事：一张表作用在平面上，是把这个平面整体摁弯；两张表连着作用，合起来还是一次作用——而<b>这次作用的先后能不能换</b>，就是这个项目要带你亲手试出来的问题。</p>
+  <p>四个视角各自独立、都能单独打开，共用同一套配色与页面外壳。全部离线自足、零依赖、零联网，<b>双击即可打开</b>。前一站没读也不要紧：第一站会把后面要用的"两列"先讲清楚。</p>
+  <p>读法：先把图上的头拖一拖，再敲数；每个视角右侧都有<b>互证</b>——两条互不相通的路给出同一个答案；也有<b>反例</b>——亲手撞到这个说法在哪儿不成立。</p>
+</section>
+
+<main class="views">
+  <a class="vcard" href="views/01-两列的去向.html">
+    <div class="no">VIEW 01</div>
+    <h3>一张表，记住两列就够了</h3>
+    <p>横箭头、竖箭头各自被送到哪，就是这张表的两列。拖动两个头，整张网格跟着弯，四个数跟着变；一支任意箭头被摁到哪，按两列拼出来就知道。</p>
+    <div class="go">进去拖两个头 →</div>
+  </a>
+  <a class="vcard" href="views/02-连着摁两次.html">
+    <div class="no">VIEW 02</div>
+    <h3>连着摁两次（走两段路）</h3>
+    <p>把"摁一下"画成一段路：网格先连续走到 B，再连续走到 A·B。中途每一步都看得见。合表的两列，就是左表分别去摁右表的两列。</p>
+    <div class="go">进去按下播放 →</div>
+  </a>
+  <a class="vcard" href="views/03-顺序有关系吗.html">
+    <div class="no">VIEW 03</div>
+    <h3>顺序有关系吗？</h3>
+    <p>同一支箭头、同一个画框：先剪切后转，与先转后剪切，终点在两处。也有一对表恰好可交换——顺序要不要紧，亲手比出来的才算数。</p>
+    <div class="go">进去比一比 →</div>
+  </a>
+  <a class="vcard" href="views/04-括号摆哪儿都一样.html">
+    <div class="no">VIEW 04</div>
+    <h3>括号摆哪儿都一样</h3>
+    <p>三张表连着摁：括号摆哪儿，结果都一样（结合律）。可要是把作用顺序整体反过来，结果就变了——括号不要紧，顺序仍要紧。</p>
+    <div class="go">进去放三张表 →</div>
+  </a>
+</main>
+
+<section class="notation">
+  <div class="card">
+    <h2>参数记法（四个视角一致）</h2>
+    <p class="sub" style="margin:0">A、B、C 各是一张表 [[a,b],[c,d]]；<b>A·B</b> 表示先摁 B、再摁 A（从右往左读）；<b>A·B·C</b> 表示先摁 C、再摁 B、再摁 A。颜色：绿＝横箭头的去向（第一列），红＝竖箭头的去向（第二列），青＝待摁的箭头 x，紫＝摁过之后 x 的位置，琥珀＝走到半路或另一个顺序的对照。</p>
+  </div>
+</section>
+
+<footer class="footer">
+  <span class="zh-CN"></span>核心数学在 <code>assets/core.js</code>，可被 <code>tests/verify-core.cjs</code> 抽出单独跑断言（含"把故障装回去"的反向对照）。绘图层在 <code>assets/draw.js</code>。
+</footer>
+</body>
+</html>

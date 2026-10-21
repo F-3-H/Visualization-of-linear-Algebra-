@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 02 · 连着摁两次 —— 矩阵复合</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">矩阵复合 · 视角 02<small>把"摁一下"画成一段路</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell" style="grid-template-columns: minmax(0,1fr) 360px">
+  <section class="stage">
+    <canvas id="cv" height="480"></canvas>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">两张表连着摁，整体仍是"摁一下"——只是这一下走了两段路。按下播放：网格先连续走到 <b>B</b>，再在这个基础上连续走到 <b>A·B</b>。中途每一步都看得见。</p>
+
+    <div class="ctl">
+      <label>表 A（后来摁的那张）</label>
+      <div class="matgrid">
+        <input type="number" id="aa" step="0.1" value="0">
+        <input type="number" id="ab" step="0.1" value="-1">
+        <input type="number" id="ac" step="0.1" value="1">
+        <input type="number" id="ad" step="0.1" value="0">
+      </div>
+    </div>
+    <div class="ctl">
+      <label>表 B（先摁的那张）</label>
+      <div class="matgrid">
+        <input type="number" id="ba" step="0.1" value="1">
+        <input type="number" id="bb" step="0.1" value="1">
+        <input type="number" id="bc" step="0.1" value="0">
+        <input type="number" id="bd" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="ctl">
+      <label>待摁的箭头 x</label>
+      <div class="vecgrid">
+        <input type="number" id="ux" step="0.1" value="1.2">
+        <input type="number" id="uy" step="0.1" value="0.7">
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button id="play">▶ 播放</button>
+      <button id="reset">↺ 重播</button>
+    </div>
+    <div class="ctl">
+      <label>走到哪一步 <output id="tout">0.00</output></label>
+      <input type="range" id="tt" min="0" max="2" step="0.005" value="0">
+    </div>
+    <div class="btnrow" id="presets"></div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>读法从右往左：</b>A·B 是先摁 B、再摁 A。这不是谁随便定的，是函数的写法 <code>f(g(x))</code> 带来的老习惯——先里后外，所以先右后左。</p>
+    <p class="note" style="border-color:var(--u)"><b>合表的两列怎么来：</b>合起来那一张表的第一列＝左表去摁右表的第一列；第二列同理。这就是矩阵相乘的算法——但记住，"算法只是算的路"，意义仍是那个"连着摁两下"的摁法。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>A·B 表示先摁 B 再摁 A。青箭头是原来的 x，紫箭头是它现在被摁到的地方；琥珀点是走完第一段时的位置。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var cv = document.getElementById("cv");
+  var view = D.create(cv, { range: 4, pad: 34 });
+
+  var C = { i: "#0e9f6e", j: "#d64545", x: "#0e7490", mx: "#7c5cbf", mid: "#b7791f", ghost: "#aeb9c8" };
+  var state = { A: L.mat(0, -1, 1, 0), B: L.mat(1, 1, 0, 1), x: L.vec(1.2, 0.7) };
+  var t = 0, playing = false, lastTs = 0, raf = null, Rcur = 4;
+
+  function col1(M) { return L.vec(M.a, M.c); }
+  function col2(M) { return L.vec(M.b, M.d); }
+  function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+  function fitFrame() {
+    var AB = L.mul(state.A, state.B), B = state.B;
+    return D.fitRange([L.vec(0, 0), state.x, L.apply(B, state.x), L.apply(AB, state.x),
+      col1(B), col2(B), col1(AB), col2(AB)]);
+  }
+  function read() {
+    state.A = L.mat(num("aa"), num("ab"), num("ac"), num("ad"));
+    state.B = L.mat(num("ba"), num("bb"), num("bc"), num("bd"));
+    state.x = L.vec(num("ux"), num("uy"));
+    Rcur = fitFrame();
+  }
+  function syncInputs() {
+    document.getElementById("aa").value = +state.A.a.toFixed(2);
+    document.getElementById("ab").value = +state.A.b.toFixed(2);
+    document.getElementById("ac").value = +state.A.c.toFixed(2);
+    document.getElementById("ad").value = +state.A.d.toFixed(2);
+    document.getElementById("ba").value = +state.B.a.toFixed(2);
+    document.getElementById("bb").value = +state.B.b.toFixed(2);
+    document.getElementById("bc").value = +state.B.c.toFixed(2);
+    document.getElementById("bd").value = +state.B.d.toFixed(2);
+    document.getElementById("ux").value = +state.x.x.toFixed(2);
+    document.getElementById("uy").value = +state.x.y.toFixed(2);
+  }
+
+  /* 走到第 t 步时，当下的那张表。
+     第 1 段：从"不动"连续摁到 B。
+     第 2 段：在 B 之上，把 A 一点点摁上去——A_s·B，s=1 时正是 A·B。
+     这样画，"接连作用"才是真的接连，而不是两个终点之间插值。 */
+  function curMat() {
+    if (t <= 1) return L.mixMat(L.ID(), state.B, t);
+    return L.mul(L.mixMat(L.ID(), state.A, t - 1), state.B);
+  }
+
+  var presets = [
+    { label: "剪切 → 转90°（视频那一对）", A: L.mat(0, -1, 1, 0), B: L.mat(1, 1, 0, 1) },
+    { label: "转90° → 剪切", A: L.mat(1, 1, 0, 1), B: L.mat(0, -1, 1, 0) },
+    { label: "抻x → 转90°", A: L.mat(0, -1, 1, 0), B: L.mat(2, 0, 0, 1) },
+    { label: "推歪 → 抻x", A: L.mat(2, 0, 0, 1), B: L.mat(1, 1, 0, 1) }
+  ];
+  var box = document.getElementById("presets");
+  presets.forEach(function (p) {
+    var b = document.createElement("button");
+    b.textContent = p.label;
+    b.addEventListener("click", function () { state.A = p.A; state.B = p.B; Rcur = fitFrame(); syncInputs(); draw(); });
+    box.appendChild(b);
+  });
+
+  function draw() {
+    view.setRange(Rcur);
+    var M = curMat();
+    var step = D.gridStep(Rcur);
+    view.clear();
+    view.grid({ step: step });
+    view.warpGrid(M, { step: step, color: "#7c5cbf", alpha: 0.30, width: 1 });
+
+    var AB = L.mul(state.A, state.B);
+    var bx = L.apply(state.B, state.x), abx = L.apply(AB, state.x);
+    // 走两段路：x → 中间 → 终点
+    view.line(state.x, bx, { color: C.ghost, width: 1.6, dash: [5, 4] });
+    view.line(bx, abx, { color: C.ghost, width: 1.6, dash: [5, 4] });
+    view.dot(bx, { color: C.mid, r: 4.5 });
+    view.text(bx, "中间", { color: C.mid, dx: 9, dy: 15 });
+    view.dot(abx, { color: "#a7b0bd", r: 5 });
+    view.text(abx, "终点", { color: "#8a94a6", dx: 10, dy: -9 });
+
+    // 两列的像（当下）
+    var c1 = col1(M), c2 = col2(M);
+    view.arrow(L.vec(0, 0), c1, { color: C.i, width: 3 });
+    view.text(c1, "î", { color: C.i, dx: 9, dy: -9, bold: true });
+    view.arrow(L.vec(0, 0), c2, { color: C.j, width: 3 });
+    view.text(c2, "ĵ", { color: C.j, dx: 9, dy: -9, bold: true });
+
+    // x 与它现在的位置
+    view.arrow(L.vec(0, 0), state.x, { color: C.x, width: 2, dash: [6, 4] });
+    view.text(state.x, "x", { color: C.x, dx: 8, dy: 12 });
+    var xm = L.apply(M, state.x);
+    view.arrow(L.vec(0, 0), xm, { color: C.mx, width: 3 });
+    view.dot(xm, { color: C.mx, r: 5.5 });
+    view.text(xm, "x 现在在这", { color: C.mx, dx: 11, dy: 4, bold: true });
+
+    // 读数
+    var Bc1 = col1(state.B), Bc2 = col2(state.B);
+    var ABc1 = L.apply(state.A, Bc1), ABc2 = L.apply(state.A, Bc2);
+    var ok1 = L.eqv(ABc1, col1(AB), 1e-9), ok2 = L.eqv(ABc2, col2(AB), 1e-9);
+    /* 互证要比的是"路的终点"，不是"此刻脚下"——此刻 t<2，人还在半路。
+       两条互不相通的路：先 B 后 A 分走两段，与直接用合表一下摁到。 */
+    var twoLeg = L.apply(state.A, bx), direct = L.apply(AB, state.x);
+    var okPath = L.eqv(twoLeg, direct, 1e-9);
+    var phase = t <= 1 ? "第 1 段：正在摁 B —— 进度 " + Math.round(t * 100) + "%"
+                       : "第 2 段：正在摁 A —— 进度 " + Math.round((t - 1) * 100) + "%";
+    var ro = document.getElementById("ro");
+    ro.innerHTML =
+      phase + "\n" +
+      "合表 A·B = [ " + AB.a.toFixed(2) + "  " + AB.b.toFixed(2) + " ]\n" +
+      "          [ " + AB.c.toFixed(2) + "  " + AB.d.toFixed(2) + " ]\n" +
+      "第一列 ＝ A×(B 的第一列) ＝ (" + ABc1.x.toFixed(2) + ", " + ABc1.y.toFixed(2) + ") " +
+        (ok1 ? "<span class='ok'>✓</span>" : "<span class='bad'>✗</span>") + "\n" +
+      "第二列 ＝ A×(B 的第二列) ＝ (" + ABc2.x.toFixed(2) + ", " + ABc2.y.toFixed(2) + ") " +
+        (ok2 ? "<span class='ok'>✓</span>" : "<span class='bad'>✗</span>") + "\n" +
+      "x 此刻在 (" + xm.x.toFixed(3) + ", " + xm.y.toFixed(3) + ")\n" +
+      "<span class='ok'>互证：</span>走两段路的终点 (" + twoLeg.x.toFixed(3) + ", " + twoLeg.y.toFixed(3) + ")\n" +
+      "      ＝ 直接用 A·B 摁 (" + direct.x.toFixed(3) + ", " + direct.y.toFixed(3) + ")" +
+      (okPath ? "  —— 同一个终点。" : "  <span class='bad'>对不上！（互证失败）</span>");
+    document.getElementById("tout").textContent = t.toFixed(2);
+    document.getElementById("tt").value = t;
+  }
+
+  /* ---------- 播放 ---------- */
+  function btnLabel() { document.getElementById("play").textContent = playing ? "❚❚ 暂停" : "▶ 播放"; }
+  function tick(ts) {
+    if (!playing) return;
+    if (!lastTs) lastTs = ts;
+    var dt = Math.min(0.05, (ts - lastTs) / 1000); lastTs = ts;
+    t += dt * 0.9;                       // 跑完两段约 2.2 秒
+    if (t >= 2) { t = 2; playing = false; }
+    draw();
+    if (playing) raf = requestAnimationFrame(tick);
+    else { lastTs = 0; btnLabel(); }
+  }
+  function play() {
+    if (t >= 2) t = 0;
+    playing = true; lastTs = 0; btnLabel();
+    raf = requestAnimationFrame(tick);
+  }
+  function pause() { playing = false; lastTs = 0; btnLabel(); if (raf) cancelAnimationFrame(raf); }
+  document.getElementById("play").addEventListener("click", function () { playing ? pause() : play(); });
+  document.getElementById("reset").addEventListener("click", function () { pause(); t = 0; draw(); });
+  document.getElementById("tt").addEventListener("input", function () {
+    pause(); t = parseFloat(this.value) || 0; draw();
+  });
+  ["aa", "ab", "ac", "ad", "ba", "bb", "bc", "bd", "ux", "uy"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () { read(); draw(); });
+  });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  syncInputs(); read(); view.resize(); draw();
+})();
+</script>
+</body>
+</html>

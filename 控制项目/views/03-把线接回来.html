@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 03 · 把线接回来 —— 让会倒的东西站住</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">让会倒的东西站住 · 视角 03<small>把线接回来：从外面引一股力，减在那张表上</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--red)"></i>虚线：没接线时它怎么走</span>
+      <span><i class="dot" style="background:var(--v)"></i>实线：接上线以后它怎么走</span>
+      <span style="margin-left:auto">同一批起点，同一个画框</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">前两站证明了：这张表里能改的两行，怎么改都留着那个正倍数。这一站换一条路——不碰棍子，从外面引一股力回来。力从哪儿进去是一列 b，用多大力是一行 k，接上以后表的第二行被减掉一截。</p>
+
+    <div class="ctl">
+      <label>k₁＝按"歪了多少"使劲 <output id="vk1">0.00</output></label>
+      <input type="range" id="sk1" min="-1" max="5" step="0.05" value="0">
+    </div>
+    <div class="ctl">
+      <label>k₂＝按"歪得多快"使劲 <output id="vk2">0.00</output></label>
+      <input type="range" id="sk2" min="-1" max="5" step="0.05" value="0">
+    </div>
+    <div class="btnrow compact">
+      <button id="b0">不接线</button>
+      <button id="b1">刚好抵消</button>
+      <button id="b2">搬到 −1 与 −2</button>
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>怎么读：</b>红虚线是原来的脾气，青实线是接线以后的脾气；起点一模一样，画框一模一样，只有表变了。<br><b>稳住它不需要"更大"，只需要两个数都为正</b>：闭环那张表的特征方程是 λ² ＋ (c＋k₂)λ ＋ (k₁−a) ＝ 0——两个系数都是正的，两个倍数就都是负的。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；a＝g/L（这一站固定在 1）；c 阻尼（固定在 0.2）；k 反馈系数。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var R = 2.6;
+  var view = D.create(canvas, { range: R, pad: 34 });
+
+  /* 画框固定：图里有必须原地对读的两族线，取景与对象只能有一个动。
+     a、c 沿用上一站那根棍子（a ＝ 1、c ＝ 0.2），这一站只动外因 k。 */
+  var A0 = L.stickMat(1, 0.2), B = L.B_STICK;
+  var state = { k1: 0, k2: 0 };
+  var seeds = (function () {
+    var s = [], i, ang;
+    for (i = 0; i < 12; i++) {
+      ang = Math.PI * 2 * i / 12;
+      s.push(L.vec(1.25 * Math.cos(ang), 1.25 * Math.sin(ang)));
+    }
+    s.push(L.vec(0.45, 0.35), L.vec(-0.5, 0.2), L.vec(0.2, -0.6), L.vec(-0.35, -0.4));
+    return s;
+  })();
+
+  function TRAJ(M, s0, T, N) {
+    var pts = [], limit = R * 1.7;
+    for (var i = 0; i <= N; i++) {
+      var p = L.apply(L.expm2(M, T * i / N), s0);
+      pts.push(p);
+      if (Math.max(Math.abs(p.x), Math.abs(p.y)) > limit) break;
+    }
+    return pts;
+  }
+  function FAMILY(M) { return seeds.map(function (s0) { return TRAJ(M, s0, 2.8, 100); }); }
+
+  function draw() {
+    var k = L.vec(state.k1, state.k2);
+    var Acl = L.closeLoop(A0, B, k);
+    view.setRange(R);
+    view.clear();
+    view.grid({ step: 0.5 });
+
+    var open = FAMILY(A0), shut = FAMILY(Acl);
+
+    /* 画序即语义：作用后的（闭环）先画，作用前的（开环）虚线压在上面。
+       这样 k 拖到 0 时两条曲线严丝合缝，看见的是"虚线压在实线上"——是两支，
+       而不是只剩一支让人以为图坏了。 */
+    shut.forEach(function (p) { view.polyline(p, { color: D.C.v, width: 2.2, alpha: 0.92 }); });
+    open.forEach(function (p) { view.polyline(p, { color: D.C.red, width: 1.3, alpha: 0.5, dash: [4, 4] }); });
+    /* 起点各画一枚小点：两族曲线的起点是同一批，这也是"只有表变了"的直接凭据 */
+    seeds.forEach(function (s0) { view.dot(s0, { color: D.C.ghost, r: 2.6 }); });
+
+    view.dot(L.vec(0, 0), { color: D.C.ink, r: 3.4 });
+
+    var eo = L.eigen(A0), ec = L.eigen(Acl);
+    function lamStr(e) {
+      if (e.type === "real") return [e.l1, e.l2];
+      if (e.type === "complex") return null;
+      return [e.l, e.l];
+    }
+    function fmt(e) {
+      var list = lamStr(e);
+      if (list) return list.map(function (x) { return (x > 0 ? "+" : "") + x.toFixed(2); }).join("，");
+      return (e.re > 0 ? "+" : "") + e.re.toFixed(2) + " ± " + e.im.toFixed(2) + "i";
+    }
+    var gap = 0;
+    for (var i = 0; i < open.length; i++) {
+      var n = Math.min(open[i].length, shut[i].length);
+      for (var j = 0; j < n; j++) gap = Math.max(gap, L.dist(open[i][j], shut[i][j]));
+    }
+    var ko = L.verdict(A0), kc = L.verdict(Acl);
+    var coef1 = 0.2 + state.k2, coef0 = state.k1 - 1;
+    var okBoth = coef1 > 0 && coef0 > 0;
+
+    var tail;
+    if (gap < 1e-9) {
+      tail = "<span class='warn'>边界：</span>现在 k ＝ (0, 0)，两条线严丝合缝（最大距离 " +
+        gap.toExponential(0) + "）——表没变，你并没有接线。加一格 k₁ 试试";
+    } else if (okBoth) {
+      tail = "<span class='warn'>反例：</span>把 k₁ 拖到 a ＝ 1 以下，它立刻变红——只要 k₁ − a 是负的，那一行就压不住，照样跑";
+    } else {
+      tail = "<span class='warn'>反例／边界：</span>现在这一格是「" + kc + "」的，因为 k₁ − a ＝ " +
+        (coef0 > 0 ? "+" : "") + coef0.toFixed(2) + " ≤ 0。k₁ 正好等于 a 时两个系数有一个是 0，" +
+        "两个倍数里就有一个落在 0 上——不肯停，也不跑掉";
+    }
+
+    document.getElementById("vk1").textContent = state.k1.toFixed(2);
+    document.getElementById("vk2").textContent = state.k2.toFixed(2);
+    document.getElementById("ro").innerHTML =
+      "闭环 ＝ A − b·k ＝ [[0, 1], [" + (1 - state.k1).toFixed(2) + ", " + (-0.2 - state.k2).toFixed(2) + "]]\n" +
+      "  第二行 ＝ 原来的 (1.00, −0.20) 减去 " + state.k1.toFixed(2) + "×b 与 " + state.k2.toFixed(2) + "×b\n" +
+      "开环判词 " + ko + "（λ ＝ " + fmt(eo) + "）" +
+      "　→　闭环判词 " + kc + "（λ ＝ " + fmt(ec) + "）\n" +
+      "<span class='ok'>互证：</span>闭环稳不稳，只看两个数：k₁ − a ＝ " + (coef0 > 0 ? "+" : "") + coef0.toFixed(2) +
+      "，c ＋ k₂ ＝ " + (coef1 > 0 ? "+" : "") + coef1.toFixed(2) +
+      "——这两个数正好就是闭环那张表的特征方程 λ² ＋ (c＋k₂)λ ＋ (k₁−a) ＝ 0 的两个系数。都是正的，两个倍数就都是负的\n" +
+      tail;
+  }
+
+  function setK(a, b) { state.k1 = a; state.k2 = b; document.getElementById("sk1").value = a; document.getElementById("sk2").value = b; draw(); }
+  var sk1 = document.getElementById("sk1"), sk2 = document.getElementById("sk2");
+  sk1.addEventListener("input", function () { state.k1 = parseFloat(sk1.value) || 0; draw(); });
+  sk2.addEventListener("input", function () { state.k2 = parseFloat(sk2.value) || 0; draw(); });
+  document.getElementById("b0").addEventListener("click", function () { setK(0, 0); });
+  document.getElementById("b1").addEventListener("click", function () { setK(1, 0.2); });
+  document.getElementById("b2").addEventListener("click", function () { setK(3, 2.8); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

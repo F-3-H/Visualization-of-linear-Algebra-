@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>线性代数基础 · 让会倒的东西站住 · 可视化项目</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .hero { max-width: 1280px; margin: 0 auto; padding: 26px 18px 6px; }
+  .hero h1 { font-size: 22px; margin: 0 0 6px; }
+  .hero p { color: var(--ink-soft); margin: 0 0 4px; max-width: 780px; }
+  .views {
+    max-width: 1280px; margin: 14px auto; padding: 0 18px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px;
+  }
+  .vcard {
+    display: block; text-decoration: none; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px; transition: border-color .15s;
+  }
+  .vcard:hover { border-color: var(--v); }
+  .vcard .no { font-family: var(--mono); color: var(--v); font-size: 12px; letter-spacing: 1px; }
+  .vcard h3 { margin: 4px 0 6px; font-size: 16px; }
+  .vcard p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+  .vcard .go { margin-top: 10px; font-size: 13px; color: var(--v); }
+  .notation { max-width: 1280px; margin: 6px auto 0; padding: 0 18px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">线性代数基础 · 让会倒的东西站住<small>与正文配套：五个视角，一层设计</small></div>
+</header>
+
+<section class="hero">
+  <h1>立在掌心的那根棍子</h1>
+  <p>一根棍子立在掌心，它会倒。上一篇《一捆数与一张表》里，我们把"接下来会怎么样"也写成了表：一行是角怎么变，一行是角速度怎么变。这一篇顺着那张表往下走——去看看它<b>稳不稳</b>，以及不稳的时候，人有没有办法。</p>
+  <p>五个视角各自独立、都能单独打开，共用同一套配色、字体与页面外壳——点进任何一个，你都知道自己还在同一个项目里。全部离线自足，双击即可打开。</p>
+  <p>读法：每站右侧都有"互证"（两条互不相通的路给出同一个答案）和"反例／边界"（亲手撞到这个说法在哪儿不成立）。走完五站，你会亲手把一根非倒不可的棍子扶住——并且知道什么时候扶不住。</p>
+  <p>只想读文章？<a href="文章.html">正文的网页版</a>在这儿。</p>
+</section>
+
+<main class="views">
+  <a class="vcard" href="文章.html">
+    <div class="no">READ</div>
+    <h3>正文 · 让会倒的东西站住</h3>
+    <p>文章的网页版：从"它会倒"一路走到"什么时候扶不住"，配图与公式都与项目同源，浏览器里从头读到尾，无需联网。</p>
+    <div class="go">去读正文 →</div>
+  </a>
+  <a class="vcard" href="views/01-站不住的点.html">
+    <div class="no">VIEW 01</div>
+    <h3>站不住的点</h3>
+    <p>棍子歪着时，"接下来往哪走"也写成表。相平面上大多数点都要绕一圈，唯独两条线是直的——沿着它们，棍子只是越歪越快，或越转越慢。</p>
+    <div class="go">进去拖一捆数 →</div>
+  </a>
+  <a class="vcard" href="views/02-内因改不动.html">
+    <div class="no">VIEW 02</div>
+    <h3>内因改不动</h3>
+    <p>把棍子换长换短、给它加阻力——参数怎么调，那个正倍数还在。整张参数地图是算出来的：a ＝ 0 那条分界线横在上面，阻尼再大也翻不过去。</p>
+    <div class="go">进去推两条滑条 →</div>
+  </a>
+  <a class="vcard" href="views/03-把线接回来.html">
+    <div class="no">VIEW 03</div>
+    <h3>把线接回来</h3>
+    <p>不碰棍子，从外面引一股力回来。力从哪儿进去是一列，用多大力是一行；接上以后表的第二行被减掉一截。同一批起点，一边飞出去，一边收回来。</p>
+    <div class="go">进去接线 →</div>
+  </a>
+  <a class="vcard" href="views/04-把倍数搬家.html">
+    <div class="no">VIEW 04</div>
+    <h3>把倍数搬家</h3>
+    <p>倒过来念：先在图上点两个位置说"我要它落在这儿"，再反解出力。两条互不相通的算路给出同一个 k；把两个目标拖成不共轭的一对，它会告诉你做不到。</p>
+    <div class="go">进去拖目标 →</div>
+  </a>
+  <a class="vcard" href="views/05-搬不动的时候.html">
+    <div class="no">VIEW 05</div>
+    <h3>搬不动的时候</h3>
+    <p>力从哪儿进去，决定你有没有资格搬。把 b 拖到特征线上，两列张成的平行四边形扁成一条线段——两条线各是一处塌缩，后果却完全不同。</p>
+    <div class="go">进去拖 b →</div>
+  </a>
+</main>
+
+<section class="notation">
+  <div class="card">
+    <h2>参数记法（五个视角一致，与正文一致）</h2>
+    <p class="sub" style="margin:0">θ 偏角，ω 角速度（一捆数＝棍子此刻的样子）；A 一张表 <code>[[0,1],[a,−c]]</code>，a ＝ g/L（棍子往外拉的劲）、c 阻尼；b 一列（力从哪儿进去）；k 一行（用多大力）；A − b·k 闭环那张表；λ 特征方向上的倍数；det(A) 面积放大倍数。与上一篇完全同一套记号。</p>
+  </div>
+</section>
+
+<footer class="footer">
+  <span class="zh-CN"></span>核心数学在 <code>assets/core.js</code>，可被 tests/verify-core.cjs 抽出单独跑断言（含"把故障装回去"的反向对照）。
+</footer>
+</body>
+</html>

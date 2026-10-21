@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 05 · 搬不动的时候 —— 让会倒的东西站住</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">让会倒的东西站住 · 视角 05<small>搬不动的时候：力从哪儿进去，决定你有没有资格搬</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--u)"></i>b：力从哪儿进去</span>
+      <span><i class="dot" style="background:var(--purple)"></i>A·b：摁一下之后它去哪</span>
+      <span><i class="dot" style="background:rgba(183,121,31,.5)"></i>两列张成的平行四边形，面积 ＝ |det| ＝ <b id="lgArea">1.000</b></span>
+      <span style="margin-left:auto">拖绿箭头的头</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">前一站问"使多大劲"，这一站问力<b>从哪儿</b>进去。b 是一列，指着力的方向；它与 A·b 张出一个平行四边形，面积塌成零，就有一个方向够不着。</p>
+
+    <div class="ctl">
+      <label>b 的横分量 <output id="vbx">0.00</output></label>
+      <input type="range" id="sbx" min="-2" max="2" step="0.05" value="0">
+    </div>
+    <div class="ctl">
+      <label>b 的纵分量 <output id="vby">1.00</output></label>
+      <input type="range" id="sby" min="-2" max="2" step="0.05" value="1">
+    </div>
+    <div class="btnrow compact">
+      <button id="b1">一般的 b</button>
+      <button id="b2">对准跑掉那条线</button>
+      <button id="b3">对准回来那条线</button>
+      <button id="b4">偏一点点</button>
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>目标始终是</b> −1 与 −2。红线＝自己跑掉的方向，青线＝自己回来的；绿箭头拖到任一条线上，平行四边形就扁成线段。<b>夹角那栏要盯住</b>：b 只印到小数第三位，而"够不着"是一处点——照读数念，多半复算不出那个 0。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；a＝g/L（固定 1）；c 阻尼（固定 0.2）；b 一列（力从哪儿进去）；k 一行（用多大力）。
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var R = 2.6;
+  var view = D.create(canvas, { range: R, pad: 34 });
+
+  var A0 = L.stickMat(1, 0.2);
+  var E = L.eigen(A0);
+  var V = [{ l: E.l1, v: E.v1 }, { l: E.l2, v: E.v2 }];
+  var state = { b: { x: 0, y: 1 } };
+  var drag = false;
+  var PUSH = L.vec(5, 5);          // "硬使劲"：够不着时也要看看会发生什么
+
+  /* 沿单位方向走到画框边缘的 frac 处。按横竖各自比例取小，不能走固定距离——
+     否则从短的那一边出框。 */
+  function onRay(v, frac) {
+    var ex = view.extent();
+    var t = Math.min(ex.x1 / Math.abs(v.x || 1e-12), ex.y1 / Math.abs(v.y || 1e-12)) * frac;
+    return L.scale(v, t);
+  }
+  /* 与 b 同向的那个特征方向上的倍数会被顶开，另一个纹丝不动。 */
+  function frozenOf(b) {
+    var d1 = Math.abs(L.cross(b, E.v1)), d2 = Math.abs(L.cross(b, E.v2));
+    return d1 <= d2 ? { stay: E.l2, ahead: E.l1 } : { stay: E.l1, ahead: E.l2 };
+  }
+  /* 画框固定（两条特征方向线是要原地对读的标尺），于是反过来约束对象：
+     b 拖到画框边上就停住，先夹回框内再吸附到特征线上。夹取在共享层（view.clamp）。 */
+  function snap(p) {
+    var out = view.clamp(p, 0.12);
+    V.forEach(function (f) {
+      var t = L.dot(out, f.v), par = L.scale(f.v, t);
+      if (L.dist(out, par) < (view.range() / 22)) out = par;   // 吸附步长按画框折算
+    });
+    return view.clamp(out, 0.12);
+  }
+
+  function draw() {
+    var b = state.b, ab = L.apply(A0, b);
+    var C = L.controlMatrix(A0, b), d = L.det(C);
+    var okCtl = L.controllable(A0, b);
+    var k = L.placePoles(A0, b, -1, -2);
+
+    view.setRange(R);
+    view.clear();
+    view.grid({ step: 0.5 });
+
+    /* 两条特征方向线：红＝跑掉，青＝回来。够不着的退化只会发生在它们身上。 */
+    V.forEach(function (f) {
+      var out = f.l > 0, col = out ? D.C.red : D.C.v;
+      var a = onRay(f.v, -0.99), c = onRay(f.v, 0.99);
+      view.line(a, c, { color: col, width: 1.3, dash: [7, 5], alpha: 0.6 });
+      var tip = onRay(f.v, 0.82);
+      view.text(tip, "λ ＝ " + (f.l > 0 ? "+" : "") + f.l.toFixed(2) + (out ? "（跑）" : "（回）"), {
+        color: col, bold: true,
+        align: tip.x >= 0 ? "left" : "right",
+        dx: tip.x >= 0 ? 8 : -8, dy: tip.y >= 0 ? -12 : 14
+      });
+    });
+
+    /* 平行四边形：两列张成的东西，面积就是 |det|。塌了就扁成一条线段。 */
+    view.poly([L.vec(0, 0), b, L.add(b, ab), ab], {
+      fill: okCtl ? "rgba(124,92,191,0.13)" : "rgba(214,69,69,0.15)",
+      stroke: okCtl ? "rgba(124,92,191,0.75)" : D.C.red, width: 1.6
+    });
+    view.arrow(L.vec(0, 0), b, { color: D.C.u, width: 3 });
+    view.arrow(L.vec(0, 0), ab, { color: D.C.purple, width: 2.4 });
+    view.dot(b, { color: D.C.u, r: 6 });
+    view.text(b, "b", { color: D.C.u, bold: true, dx: 10, dy: -12 });
+    /* A·b 是"算出来的"那一支，b 一靠近框边它就可能整支到了框外。箭头让它出去
+       （那正是"越跑越远"的样子），但标签得留在画里——否则读者只看得见 b、
+       看不见它被摁到哪去了。夹取用共享层的 view.clamp：在框内时它是恒等。 */
+    var lab = view.clamp(ab, 0.10);
+    view.text(L.vec(lab.x, lab.y), "A·b", { color: D.C.purple, bold: true, dx: 10, dy: 12 });
+
+    document.getElementById("lgArea").textContent = Math.abs(d).toFixed(3);
+    document.getElementById("vbx").textContent = b.x.toFixed(2);
+    document.getElementById("vby").textContent = b.y.toFixed(2);
+    /* 夹角：det 只在"两列成直角"时才等于面积，两列几乎排齐的时候 det 会小到
+       印不出来，夹角却还读得出。所以这一栏必须跟 det 一起印——
+       它是这一站唯一一个"照着读数就能自己复算出来"的量。 */
+    var deg = Math.atan2(Math.abs(L.cross(b, ab)), L.dot(b, ab)) * 180 / Math.PI;
+
+    var head, tail;
+    if (okCtl) {
+      var Acl = L.closeLoop(A0, b, k), ec = L.eigen(Acl);
+      var es = ec.type === "real" ? [ec.l1, ec.l2]
+             : (ec.type === "complex" ? null : [ec.l, ec.l]);
+      head = "能控：k ＝ (" + k.x.toFixed(3) + ", " + k.y.toFixed(3) + ")" +
+             "　闭环倍数 " + (es ? es[0].toFixed(3) + " 与 " + es[1].toFixed(3)
+                               : ec.re.toFixed(3) + " ± " + ec.im.toFixed(3) + "i") +
+             "　判词 " + L.verdict(Acl);
+      tail = "<span class='warn'>反例／边界：</span>往那条线再靠一点，面积就越小，要的 k 就越大——" +
+             "面积 0.02 时 |k| 已经 " + mag(kNear(b, 0.02)) + "，0.001 时 " + mag(kNear(b, 0.001)) +
+             "。面积只要不是 0，就够得着；可「够得着」与「好使唤」是两回事";
+    } else {
+      var fz = frozenOf(b), Acl2 = L.closeLoop(A0, b, PUSH), ec2 = L.eigen(Acl2);
+      var list = ec2.type === "real" ? [ec2.l1, ec2.l2] : (ec2.type === "complex" ? null : [ec2.l, ec2.l]);
+      var hasFrozen = list && (Math.abs(list[0] - fz.stay) < 1e-6 || Math.abs(list[1] - fz.stay) < 1e-6);
+      head = "<span class='bad'>够不着：</span>这一对目标做不到。硬使劲 k ＝ (5, 5) 之后，闭环倍数 " +
+             (list ? list[0].toFixed(3) + " 与 " + list[1].toFixed(3) : "—") +
+             (hasFrozen ? "——其中 " + (fz.stay > 0 ? "+" : "") + fz.stay.toFixed(3) + " 纹丝不动" : "");
+    /* 两条线的名字必须从「b 落在哪条线上」算出来，不能照 fz.stay 的正负随手写一个。
+       b ∝ v_j 时够不着的是另一个模式（左特征向量 w_i·b ＝ 0，i ≠ j）：
+         b 落在「跑掉」那条线上 → 够不着的是 −1.105（本来就会回来的那个）→ 还救得回来
+         b 落在「回来」那条线上 → 够不着的是 +0.905（会跑的那个）      → 没救
+       所以名字与结论由同一个判断给出：先用 cross 判 b 贴近哪条线。 */
+    var onRun = Math.abs(L.cross(b, E.v1)) <= Math.abs(L.cross(b, E.v2));
+    var lineName = onRun ? "跑掉" : "回来";
+    tail = fz.stay > 0
+      ? "<span class='bad'>没救了。</span>b 落在「" + lineName + "」那条线上，够不着的那个方向恰好就是会「跑掉」的那个倍数（" +
+        (fz.stay > 0 ? "+" : "") + fz.stay.toFixed(3) + "）：使劲再大也搬不动它——" +
+        "就算把 k 开到 (1000, 1000)，它还是 " + (fz.stay > 0 ? "+" : "") + fz.stay.toFixed(3)
+      : "<span class='warn'>还救得回来。</span>b 落在「" + lineName + "」那条线上，够不着的那个方向恰好是自己会「回来」的那个（" +
+        fz.stay.toFixed(3) + "）：只要使劲够大，另一个（会跑的那个）照样搬到左边去——" +
+        "够不着的是那个本来就没事的方向，所以还稳得住，只是不叫「能控」";
+    }
+
+    document.getElementById("ro").innerHTML =
+      "b ＝ (" + b.x.toFixed(3) + ", " + b.y.toFixed(3) + ")，A·b ＝ (" + ab.x.toFixed(3) + ", " + ab.y.toFixed(3) + ")\n" +
+      "det[b, A·b] ＝ " + d.toExponential(2) + "，夹角 ＝ " + deg.toFixed(3) + "°\n" +
+      "　→　" + (okCtl ? "两列不平行，每个方向都够得着" : "两列排成一条直线，有一个方向够不着") + "\n" +
+      head + "\n" +
+      "<span class='ok'>互证：</span>能控与否，就写在图上那个平行四边形的面积里：det 不为 0 ⟺ 面积不为 0 ⟺ 两个方向都够得着。" +
+      "b 与 A·b 平行时四边形扁成线段——这正是上一篇那条被摁扁了的方向\n" +
+      tail;
+  }
+  function mag(k) { return k ? Math.hypot(k.x, k.y).toFixed(0) : "—"; }
+  /* 把 b 往"够不着"那条线的垂线方向挪一点点，看看要花多大力气才搬得动 */
+  function kNear(b, eps) {
+    var f = V[Math.abs(L.cross(b, E.v1)) <= Math.abs(L.cross(b, E.v2)) ? 0 : 1];
+    var perp = L.vec(-f.v.y, f.v.x);
+    var bp = L.add(b, L.scale(perp, eps));
+    return L.placePoles(A0, bp, -1, -2);
+  }
+
+  function toWorld(ev) {
+    var r = canvas.getBoundingClientRect();
+    return { x: view.wx(ev.clientX - r.left), y: view.wy(ev.clientY - r.top) };
+  }
+  canvas.addEventListener("pointerdown", function (ev) {
+    var r = canvas.getBoundingClientRect();
+    if (Math.hypot(ev.clientX - r.left - view.sx(state.b.x), ev.clientY - r.top - view.sy(state.b.y)) < 16) {
+      drag = true; canvas.setPointerCapture(ev.pointerId);
+    }
+  });
+  canvas.addEventListener("pointermove", function (ev) {
+    if (!drag) return;
+    var w = toWorld(ev);
+    if (!isFinite(w.x) || !isFinite(w.y) || L.norm(w) < 1e-6) return;
+    state.b = snap(w);
+    draw();
+  });
+  canvas.addEventListener("pointerup", function () { if (drag) { drag = false; draw(); } });
+
+  function setB(x, y) {
+    state.b = { x: x, y: y };
+    document.getElementById("sbx").value = x; document.getElementById("sby").value = y;
+    draw();
+  }
+  var sbx = document.getElementById("sbx"), sby = document.getElementById("sby");
+  sbx.addEventListener("input", function () { state.b = L.vec(parseFloat(sbx.value) || 0, state.b.y); draw(); });
+  sby.addEventListener("input", function () { state.b = L.vec(state.b.x, parseFloat(sby.value) || 0); draw(); });
+  document.getElementById("b1").addEventListener("click", function () { setB(0, 1); });
+  /* 这两颗按钮必须填"精确的"特征方向：四舍五入到小数点后四位，两列就不再
+     严格共线，det 从 1e−16 变成 1e−4，"够不着"那一格就摸不到了。
+     退化是一处点，不是一个区域——这正是这一站要说的事。 */
+  document.getElementById("b2").addEventListener("click", function () { setB(E.v1.x, E.v1.y); });
+  document.getElementById("b3").addEventListener("click", function () { setB(E.v2.x, E.v2.y); });
+  document.getElementById("b4").addEventListener("click", function () {
+    var perp = L.vec(-E.v2.y, E.v2.x);
+    setB(E.v2.x + 0.03 * perp.x, E.v2.y + 0.03 * perp.y);
+  });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>
