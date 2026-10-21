@@ -28,3 +28,6 @@ Thumbs.db
 desktop.ini
 .DS_Store
 node_modules/
+
+# 部署包（由 tools/build_site.py 生成）
+_site/
