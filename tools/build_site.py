@@ -28,6 +28,10 @@ PROJECTS = {
              "assets/theme.css", "图"],
     "控制项目": ["index.html", "文章.html", "views", "assets/core.js", "assets/draw.js",
                  "assets/theme.css", "图"],
+    "观测项目": ["index.html", "文章.html", "views", "assets/core.js", "assets/draw.js",
+                 "assets/theme.css", "图"],
+    "观测项目": ["index.html", "文章.html", "views", "assets/core.js", "assets/draw.js",
+                 "assets/theme.css", "图"],
     "复合项目": ["index.html", "views", "assets/core.js", "assets/draw.js", "assets/theme.css"],
     "span-lab": ["index.html", "css", "js", "docs"],
 }
@@ -37,6 +41,8 @@ MUST = [
     "index.html",
     "项目/index.html", "项目/文章.html",
     "控制项目/index.html", "控制项目/文章.html",
+    "观测项目/index.html", "观测项目/文章.html",
+    "观测项目/index.html", "观测项目/文章.html",
     "复合项目/index.html",
     "span-lab/index.html",
 ]
@@ -81,8 +87,8 @@ def audit():
                 bad.append("不该有文件 %s" % os.path.relpath(os.path.join(root, f), OUT))
     # 入口页指向的四个目录都得在
     html = open(os.path.join(OUT, "index.html"), encoding="utf-8").read()
-    for link in ["项目/index.html", "控制项目/文章.html", "复合项目/index.html",
-                 "span-lab/index.html"]:
+    for link in ["项目/index.html", "控制项目/文章.html", "观测项目/文章.html",
+                 "复合项目/index.html", "span-lab/index.html"]:
         if link not in html:
             bad.append("入口页没链到 %s" % link)
         elif not os.path.exists(os.path.join(OUT, link)):
@@ -110,7 +116,7 @@ def main():
         for b in bad:
             print("  ✗ " + b)
         raise SystemExit(1)
-    print("  ✓ 白名单齐、黑名单干净、入口页四条链接都落得下")
+    print("  ✓ 白名单齐、黑名单干净、入口页五条链接都落得下")
     return 0
 
 

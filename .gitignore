@@ -4,6 +4,7 @@ tools/_doc.json
 tools/_doc_full.json
 tools/_doc_text.txt
 tools/_article_tmp_control/
+tools/_test_math*.docx
 **/tools/_shots/
 **/*.bak*
 **/*.bak-*
@@ -22,6 +23,7 @@ tools/_article_tmp_control/
 # 站点里各项目自带的 图/ 是深色版，几何与浅色版逐张同像素。
 图-dark/
 控制图-dark/
+观测图-dark/
 
 # ── 系统垃圾 ───────────────────────────────────────────────
 Thumbs.db

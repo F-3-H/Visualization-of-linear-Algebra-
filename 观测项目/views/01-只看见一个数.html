@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 01 · 只看见一个数 —— 看不见的状态</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">看不见的状态 · 视角 01<small>只看见一个数：一条读数上站着无数个状态</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--u)"></i>你测到的那个状态</span>
+      <span><i class="dot" style="background:var(--sum)"></i>读数一样、状态不同的另一个</span>
+      <span><i class="dot" style="background:var(--v)"></i>读数相同的一整条线（等值线）</span>
+      <span style="margin-left:auto">横轴＝θ 歪了多少，纵轴＝ω 歪得多快</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">上一篇的最后一步是"反解出力"，而反解要先知道两件事：歪了多少、歪得多快。可手里只有一只眼睛——它只量得到一个数。这一站先把"测到一个数"到底给了你什么，摊在平面上看。</p>
+
+    <div class="ctl">
+      <label>另一个点在竖直方向挪多远<output id="vd">1.20</output></label>
+      <input type="range" id="sd" min="0.1" max="2" step="0.05" value="1.2">
+    </div>
+    <p class="note">也可以直接拖画框里那个绿点。</p>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>读数是一条线，不是一个点。</b>眼睛量到的是"θ 等于多少"，而 θ 相同的那一整条竖线上，ω 可以是任何值——读数一个都分辨不出来。这不是仪器不够好，是一个数只能定住一维：平面上的位置有两个数，你手里只有一个。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；k＝(k₁,k₂) 上一篇那组力；y 读数。</span>
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 2.4, pad: 36 });
+  var K = L.vec(3, 2.8);              // 上一篇算出来的那组力，原样接着用
+  var state = { p: L.vec(0.9, 0.6), d: 1.2 };
+
+  function clampP(p) { return view.clamp(p, 0.08); }
+
+  function draw() {
+    var p = state.p;
+    var y = L.measure(L.vec(1, 0), p);          // 读数：只有 θ
+    var q = clampP(L.vec(p.x, p.y + state.d));  // 同一读数上的另一个可能
+
+    view.clear();
+    view.grid({ step: 0.5 });
+
+    /* 等值线族：读数相同的那些点连成的线。测 θ 时它们是一条条竖线。 */
+    for (var t = -4; t <= 4; t += 1) {
+      view.line(L.vec(t, -view.extent().y1), L.vec(t, view.extent().y1),
+        { color: D.C.line, width: 1, dash: [3, 6] });
+    }
+    /* 你此刻站的那一条，单独加粗 */
+    view.line(L.vec(p.x, -view.extent().y1), L.vec(p.x, view.extent().y1),
+      { color: D.C.v, width: 2.2 });
+
+    view.arrow(L.vec(0, 0), p, { color: D.C.u, width: 2.4 });
+    view.arrow(L.vec(0, 0), q, { color: D.C.sum, width: 2.4 });
+    view.dot(p, { color: D.C.u, r: 5.5 });
+    view.dot(q, { color: D.C.sum, r: 5.5 });
+
+    /* 标签一律往画框中心那一侧长：点被拖到边上时，往边上写的字就出框了。
+       左右按"落点在不在右半边"定，上下按"离上下沿还剩多少"定。 */
+    function near(pt, s, color, up) {
+      var e = view.extent(), cx = (e.x0 + e.x1) / 2, band = (e.y1 - e.y0) * 0.14;
+      var right = pt.x > cx;
+      var dy = up ? -14 : 16;
+      if (up && pt.y > e.y1 - band) dy = 16;
+      if (!up && pt.y < e.y0 + band) dy = -14;
+      view.text(pt, s, {
+        color: color, bold: true, dy: dy,
+        dx: right ? -10 : 10, align: right ? "right" : "left"
+      });
+    }
+    near(p, "测到的这个", D.C.u, true);
+    near(q, "读数一样", D.C.sum, true);
+    var capRight = p.x > 0;
+    view.text(L.vec(p.x, -view.extent().y1 * 0.86), "这一整条线上的读数都等于 " + y.toFixed(2),
+      { color: D.C.v, dx: capRight ? -8 : 8, bold: true, align: capRight ? "right" : "left" });
+
+    /* 力：上一篇的 k 要按两个数分配，你只有一个数，只能猜另一个 */
+    var fTrue = K.x * p.x + K.y * p.y;
+    var fGuess = K.x * p.x + K.y * 0;      // 把看不见的那个当 0
+    document.getElementById("vd").textContent = state.d.toFixed(2);
+    document.getElementById("ro").innerHTML =
+      "读数 y ＝ θ ＝ " + y.toFixed(3) + "\n" +
+      "你测到的：θ ＝ " + p.x.toFixed(2) + "，ω ＝ " + p.y.toFixed(2) + "\n" +
+      "同一读数上的另一个：θ ＝ " + q.x.toFixed(2) + "，ω ＝ " + q.y.toFixed(2) + "\n" +
+      "两个状态的读数之差 ＝ " + Math.abs(y - L.measure(L.vec(1, 0), q)).toFixed(3) +
+      "，它们本身相距 " + L.dist(p, q).toFixed(2) + "\n" +
+      "<span class='ok'>互证：</span>读数之差是 0，状态之差不小——两条互不相通的路（一条数读数、一条量距离）说明同一件事\n" +
+      "按上一篇那组力 k ＝ (3, 2.8) 算：该使的力 ＝ " + fTrue.toFixed(2) +
+      "；把看不见的那个当零，算出来 ＝ " + fGuess.toFixed(2) + "\n" +
+      "<span class='bad'>代价：</span>差了 " + Math.abs(fTrue - fGuess).toFixed(2) +
+      "——这不是算错了，是有一个数根本没进你的手\n" +
+      (state.d > 1.4
+        ? "<span class='warn'>反例／边界：</span>把橙点拖得再远一点，读数依旧一字不变。这条线有多长，你的不确定就有多大"
+        : "<span class='warn'>反例／边界：</span>把「另一个点」的滑条拉大：它离得越远，读数还是那个数——同一读数能对应的状态无穷多");
+  }
+
+  // 拖点
+  var dragging = false;
+  function toData(ev) {
+    var r = canvas.getBoundingClientRect();
+    return L.vec(view.wx(ev.clientX - r.left), view.wy(ev.clientY - r.top));
+  }
+  canvas.addEventListener("pointerdown", function (ev) {
+    dragging = true;
+    state.p = clampP(toData(ev));
+    if (canvas.setPointerCapture) canvas.setPointerCapture(ev.pointerId);
+    draw();
+  });
+  canvas.addEventListener("pointermove", function (ev) {
+    if (!dragging) return;
+    state.p = clampP(toData(ev));
+    if (state.p.x === 0 && state.p.y === 0) state.p = L.vec(0.01, 0.01);
+    draw();
+  });
+  canvas.addEventListener("pointerup", function () { dragging = false; });
+  canvas.addEventListener("pointercancel", function () { dragging = false; });
+
+  var sd = document.getElementById("sd");
+  sd.addEventListener("input", function () { state.d = parseFloat(sd.value) || 0.1; draw(); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

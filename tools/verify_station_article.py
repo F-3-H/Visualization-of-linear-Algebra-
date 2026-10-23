@@ -24,6 +24,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ARTICLES = [
     ("控制项目/文章.html", "线性代数基础·让会倒的东西站住.md", "控制项目"),
     ("项目/文章.html", "线性代数基础·一捆数与一张表.md", "项目"),
+    ("观测项目/文章.html", "线性代数基础·看不见的状态.md", "观测项目"),
 ]
 
 R = {"pass": 0, "fail": 0, "fails": []}
@@ -458,68 +459,107 @@ def _first_span(html, cls):
     return k, inner_span(html, k)
 
 
+def _first_plain_char(html):
+    """找第一个「在正文段落里、不在标签里」的汉字——改一个字用它。"""
+    k = html.find("<p>")
+    if k < 0:
+        return -1
+    j = k + 3
+    depth = 0
+    while j < len(html):
+        c = html[j]
+        if c == "<":
+            depth += 1
+        elif c == ">":
+            depth -= 1
+        elif depth == 0 and "\u4e00" <= c <= "\u9fff":
+            return j
+        j += 1
+    return -1
+
+
 def faults(html):
-    """返回 [(名字, 改坏的 html)]，每个只坏一处。"""
+    """返回 [(名字, 改坏的 html)]，每个只坏一处。
+
+    故障的"抓手"一律从页面自己身上现找（第一个段落、第一个行内公式、第一个矩阵格子、
+    第一条 iframe src……），不写死某一篇的句子——三篇共用同一套反向对照，
+    否则给第二、第三篇跑的时候 == src 一个都改不动，"抓不住"会被误读成"判据空转"。
+    """
     out = []
-    out.append(("改一个字", html.replace("棍子立起来，它就要倒。", "棍子立起来，它就要摔。", 1)))
 
-    k, inner = _first_span(html, "im")
-    out.append(("把一个行内公式拆成纯文本", html[:k] + inner + html[k + len('<span class="im">') + len(inner) + 7:]))
+    j = _first_plain_char(html)
+    if j >= 0:
+        out.append(("改一个字", html[:j] + "某" + html[j + 1:]))
 
-    m = re.search(r'<span class="c"><span class="op">−</span>c</span>', html)
-    if m:
-        out.append(("改一格矩阵内容", html[:m.start()] + '<span class="c">−d</span>' + html[m.end():]))
+    k = html.find('<span class="im">')
+    if k >= 0:
+        inner = inner_span(html, k)
+        out.append(("把一个行内公式拆成纯文本",
+                    html[:k] + inner + html[k + len('<span class="im">') + len(inner) + len("</span>"):]))
+
+    k = html.find('<span class="c">')
+    if k >= 0:
+        inner = inner_span(html, k)
+        out.append(("改一格矩阵内容",
+                    html[:k] + '<span class="c">−z</span>' + html[k + len('<span class="c">') + len(inner) + len("</span>"):]))
 
     m = re.search(r"<figcaption>.*?</figcaption>", html, re.S)
-    out.append(("删掉一条图题", html[:m.start()] + html[m.end():]))
+    if m:
+        out.append(("删掉一条图题", html[:m.start()] + html[m.end():]))
 
-    out.append(("把一站指向不存在的页面",
-                html.replace("views/04-把倍数搬家.html", "views/04-不存在.html", 1)))
+    srcs = re.findall(r'src="(views/[^"]+)"', html)
+    if srcs:
+        out.append(("把一站指向不存在的页面",
+                    html.replace('src="%s"' % srcs[0], 'src="views/99-不存在.html"', 1)))
 
     out.append(("掺一条外链样式表", html.replace("</head>", '<link rel="stylesheet" href="x.css">\n</head>', 1)))
 
-    out.append(("在 :root 外面硬写一个颜色", html.replace("article p{", "article p{color:#ff0000;", 1)))
+    m = re.search(r":root\s*\{.*?\}", html, re.S)
+    if m:
+        out.append(("在 :root 外面硬写一个颜色",
+                    html[:m.end()] + "\n  article{color:#ff0000;}" + html[m.end():]))
 
     # 两站的 src 对调，横条上的名字就与打开的那一页对不上了
-    a = 'views/01-站不住的点.html'
-    b = 'views/02-内因改不动.html'
-    out.append(("两站的来源对调", html.replace(a, "@@").replace(b, a).replace("@@", b)))
+    if len(srcs) >= 2:
+        a, b = srcs[0], srcs[1]
+        out.append(("两站的来源对调",
+                    html.replace('src="%s"' % a, 'src="@@X@@"').replace('src="%s"' % b, 'src="%s"' % a)
+                        .replace('src="@@X@@"', 'src="%s"' % b)))
     return out
 
 
 def run_reverse():
-    print("\n════════ 反向对照：把八处故障装回去，看判据是不是空转 ════════")
-    html_rel, md_rel, _ = ARTICLES[0]
-    src = open(os.path.join(ROOT, html_rel), encoding="utf-8").read()
-    out_dir = os.path.dirname(os.path.join(ROOT, html_rel))
-    tmp_rel = os.path.join(os.path.dirname(html_rel), "_tmp_reverse.html").replace("\\", "/")
-    tmp_abs = os.path.join(ROOT, tmp_rel)
-
-    caught, missed = 0, []
-    for name, bad in faults(src):
-        if bad == src:
-            print("  ! 故障「%s」没改动到任何东西——这条对照本身失效" % name)
-            missed.append(name)
-            continue
-        open(tmp_abs, "w", encoding="utf-8", newline="\n").write(bad)
-        reset()
-        print("\n[故障] %s" % name)
-        import io
-        buf = io.StringIO()
-        old = sys.stdout
-        sys.stdout = buf
-        check(tmp_rel, md_rel, "控制项目")
-        sys.stdout = old
-        first = [l for l in buf.getvalue().split("\n") if l.strip().startswith("✗")]
-        if R["fail"] > 0:
-            caught += 1
-            print("  → 抓住 %d 条，第一条：%s" % (R["fail"], first[0].strip() if first else ""))
-        else:
-            missed.append(name)
-            print("  → 一条都没抓住（这组判据是空转的）")
-    if os.path.exists(tmp_abs):
-        os.remove(tmp_abs)
-    print("\n反向对照：%d/%d 处故障被抓住。" % (caught, caught + len(missed)))
+    print("\n════════ 反向对照：每篇各塞八处故障，看判据是不是空转 ════════")
+    total, caught_all, missed = 0, 0, []
+    for html_rel, md_rel, proj in ARTICLES:
+        src = open(os.path.join(ROOT, html_rel), encoding="utf-8").read()
+        tmp_rel = os.path.join(os.path.dirname(html_rel), "_tmp_reverse.html").replace("\\", "/")
+        tmp_abs = os.path.join(ROOT, tmp_rel)
+        print("\n── %s" % html_rel)
+        for name, bad in faults(src):
+            total += 1
+            if bad == src:
+                print("  ! 故障「%s」没改动到任何东西——这条对照本身失效" % name)
+                missed.append("%s/%s" % (html_rel, name))
+                continue
+            open(tmp_abs, "w", encoding="utf-8", newline="\n").write(bad)
+            reset()
+            import io
+            buf = io.StringIO()
+            old = sys.stdout
+            sys.stdout = buf
+            check(tmp_rel, md_rel, proj)
+            sys.stdout = old
+            first = [l for l in buf.getvalue().split("\n") if l.strip().startswith("✗")]
+            if R["fail"] > 0:
+                caught_all += 1
+                print("  抓住 %d 条 · %s → %s" % (R["fail"], name, first[0].strip() if first else ""))
+            else:
+                missed.append("%s/%s" % (html_rel, name))
+                print("  一条没抓住（判据在这里是空转的）· %s" % name)
+        if os.path.exists(tmp_abs):
+            os.remove(tmp_abs)
+    print("\n反向对照：%d/%d 处故障被抓住。" % (caught_all, total))
     return len(missed)
 
 

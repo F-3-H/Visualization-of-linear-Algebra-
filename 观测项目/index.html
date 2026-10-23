@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>线性代数基础 · 看不见的状态 · 可视化项目</title>
+<link rel="stylesheet" href="assets/theme.css">
+<style>
+  .hero { max-width: 1280px; margin: 0 auto; padding: 26px 18px 6px; }
+  .hero h1 { font-size: 22px; margin: 0 0 6px; }
+  .hero p { color: var(--ink-soft); margin: 0 0 4px; max-width: 780px; }
+  .views {
+    max-width: 1280px; margin: 14px auto; padding: 0 18px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px;
+  }
+  .vcard {
+    display: block; text-decoration: none; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px; transition: border-color .15s;
+  }
+  .vcard:hover { border-color: var(--v); }
+  .vcard .no { font-family: var(--mono); color: var(--v); font-size: 12px; letter-spacing: 1px; }
+  .vcard h3 { margin: 4px 0 6px; font-size: 16px; }
+  .vcard p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+  .vcard .go { margin-top: 10px; font-size: 13px; color: var(--v); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">线性代数基础 · 看不见的状态<small>与正文配套：五个视角，一层设计</small></div>
+</header>
+
+<section class="hero">
+  <h1>只用一只眼睛，把两个数追回来</h1>
+  <p>上一篇《让会倒的东西站住》走到最后，动作是"反解出力"。可反解要先知道两件事：歪了多少、歪得多快。这一篇接着问一个更难的问题——<b>如果只量得到一个数，另一个还追得回来吗？</b></p>
+  <p>五个视角各自独立、都能单独打开，共用同一套配色、字体与页面外壳——点进任何一个，你都知道自己还在同一个项目里。全部离线自足，双击即可打开。</p>
+  <p>读法：每站右侧都有"互证"（两条互不相通的路给出同一个答案）和"反例／边界"（亲手撞到这个说法在哪儿不成立）。走完五站，你会眼睁睁看着一条特征线躲进影子里——那才是"测什么"比"怎么算"更值钱的地方。</p>
+  <p>只想读文章？<a href="文章.html">正文的网页版</a>在这儿。</p>
+</section>
+
+<main class="views">
+  <a class="vcard" href="文章.html">
+    <div class="no">READ</div>
+    <h3>正文 · 看不见的状态</h3>
+    <p>文章的网页版：从"一条读数定不住一个状态"走到"有一处怎么调都调不动"，配图与公式都与项目同源，浏览器里从头读到尾，无需联网。</p>
+    <div class="go">去读正文 →</div>
+  </a>
+  <a class="vcard" href="views/01-只看见一个数.html">
+    <div class="no">VIEW 01</div>
+    <h3>只看见一个数</h3>
+    <p>读数把平面压成一个数：同一读数上站着一整条线的状态。拖一个点，看读数怎么纹丝不动。</p>
+    <div class="go">进去看 →</div>
+  </a>
+  <a class="vcard" href="views/02-差分这条路.html">
+    <div class="no">VIEW 02</div>
+    <h3>差分这条路</h3>
+    <p>两次读数相减再除以间隔。间隔越小噪声越炸，两头夹，没有"越精细越好"。</p>
+    <div class="go">进去看 →</div>
+  </a>
+  <a class="vcard" href="views/03-让影子跟着跑.html">
+    <div class="no">VIEW 03</div>
+    <h3>让影子跟着跑</h3>
+    <p>照系统造一个复制品。偏差按两条特征方向各分一份，一份长、一份缩。</p>
+    <div class="go">进去看 →</div>
+  </a>
+  <a class="vcard" href="views/04-纠正减在第一列.html">
+    <div class="no">VIEW 04</div>
+    <h3>纠正减在第一列</h3>
+    <p>把读数差接回去：L 乘 C，一列乘一行，只改写第一列。和与积两句话定生死。</p>
+    <div class="go">进去看 →</div>
+  </a>
+  <a class="vcard" href="views/05-影子里那条线.html">
+    <div class="no">VIEW 05</div>
+    <h3>影子里那条线</h3>
+    <p>把测的方向拧一拧：某些角度上，一条特征线整个躺进等值线里，怎么加力都调不动。</p>
+    <div class="go">进去看 →</div>
+  </a>
+</main>
+
+<footer class="footer">
+  <span>参数记法：θ 偏角；ω 角速度；A＝[[0,1],[a,−c]]，a＝1，c＝0.2；C 读数那一行；L 两笔纠正；λ 倍数。</span>
+</footer>
+</body>
+</html>

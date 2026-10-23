@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 05 · 影子里那条线 —— 看不见的状态</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">看不见的状态 · 视角 05<small>影子里那条线：有一处，怎么调都调不动</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--v)"></i>你测的那个方向 c（读数沿它取）</span>
+      <span><i class="dot" style="background:var(--line)"></i>读数相同的线（等值线）</span>
+      <span><i class="dot" style="background:var(--purple)"></i>整条躺在影子里那条特征线</span>
+      <span style="margin-left:auto">横轴＝θ，纵轴＝ω</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">前几站一直默认"测 θ 就能把两个数都追回来"。这一站把"测什么"拧一拧：读数不一定是 θ，也可以是 θ 与 ω 的某个混合。拧到某些角度，纠正的两笔再大也没用。</p>
+
+    <div class="ctl">
+      <label>测的方向 c 的角度<output id="vph">0°</output></label>
+      <input type="range" id="sph" min="0" max="180" step="0.1" value="0">
+    </div>
+    <div class="ctl">
+      <label>纠正力度（两笔一起放大）<output id="vlam">1.0×</output></label>
+      <input type="range" id="slam" min="0" max="10" step="0.1" value="1">
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>影子。</b>读数 y ＝ c₁θ + c₂ω 把平面上的点压成一个数：同一读数是一条线，读数就是"你落在哪条线上"。如果某条特征线正好和一条等值线重合，沿着它走，读数一点都不变——它整个藏在影子里。这条方向上的倍数，(A − LC)v ＝ λv 永远成立，L 怎么调都动不了它。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：c 读数那一行；O ＝ [C; CA] 可观测矩阵；λ₁＝0.905，λ₂＝−1.105；L 两笔纠正。</span>
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 2.2, pad: 38 });
+  var A = L.stickMat(1, 0.2);
+  var EIG = L.eigen(A);
+  /* 两处盲方向：c ⊥ v ⟺ c₁ + λc₂ ＝ 0 ⟺ 方向角 atan2(1, −λ)。
+     由几何当场算出来，别在提示语里手写角度——手写的数与算出来的对象配不上对，
+     静态图上没人看得出来。 */
+  var BLIND = [Math.atan2(1, -EIG.l1) * 180 / Math.PI, Math.atan2(1, -EIG.l2) * 180 / Math.PI]
+    .map(function (a) { return (a + 180) % 180; })
+    .sort(function (a, b) { return a - b; });
+  var state = { deg: 0, gain: 1 };
+
+  function cvec(deg) {
+    var r = deg * Math.PI / 180;
+    var v = L.vec(Math.cos(r), Math.sin(r));
+    return v.y < -1e-12 || (Math.abs(v.y) < 1e-12 && v.x < 0) ? L.scale(v, -1) : v;
+  }
+
+  function draw() {
+    var cv = cvec(state.deg);
+    var O = L.observabilityMatrix(A, cv);
+    var detO = L.det(O);
+    var blind = L.blindDirection(A, cv);
+    var R = view.reach();
+
+    view.clear();
+    view.grid({ step: 0.5 });
+
+    /* 两条特征线：红＝跑掉，青＝回来 */
+    view.line(L.vec(-EIG.v1.x * R, -EIG.v1.y * R), L.vec(EIG.v1.x * R, EIG.v1.y * R), { color: D.C.red, width: 2 });
+    view.line(L.vec(-EIG.v2.x * R, -EIG.v2.y * R), L.vec(EIG.v2.x * R, EIG.v2.y * R), { color: D.C.v, width: 2 });
+
+    /* 等值线：与 c 垂直的那一族，读数在每一条上都不变 */
+    var perp = L.vec(-cv.y, cv.x);
+    for (var k = -3; k <= 3; k++) {
+      var base = L.scale(cv, k);
+      view.line(L.add(base, L.scale(perp, -R)), L.add(base, L.scale(perp, R)),
+        { color: D.C.line, width: 1, dash: [4, 6] });
+    }
+
+    /* 读数方向本身 */
+    view.arrow(L.vec(0, 0), L.scale(cv, 1.1), { color: D.C.v, width: 2.6, head: 10 });
+    view.text(L.scale(cv, 1.15), "读数沿这个方向取", {
+      color: D.C.v, bold: true,
+      dx: cv.x > 0 ? 8 : -8, align: cv.x > 0 ? "left" : "right",
+      dy: cv.y > 0.5 ? 14 : -10
+    });
+
+    if (blind && blind.v) {
+      view.line(L.vec(-blind.v.x * R, -blind.v.y * R), L.vec(blind.v.x * R, blind.v.y * R),
+        { color: D.C.purple, width: 4, dash: [10, 6] });
+      /* 标签顺着特征线放，但离边要留够：贴到画框边缘就翻到线的另一侧 */
+      var bp = L.scale(blind.v, R * 0.6);
+      view.text(bp, "整条藏在影子里", {
+        color: D.C.purple, bold: true,
+        dx: bp.x > 0 ? -10 : 10, align: bp.x > 0 ? "right" : "left",
+        dy: bp.y > 0 ? -12 : 14
+      });
+    }
+
+    /* 扫一串 L，看两个倍数里有几个被钉死了。
+       ① 比较不能按"槽位"来：两个根会交叉（L 大到一定程度，大根从 +0.905 掉到 −1.105），
+          按槽位比会把"纹丝不动的那个"也算成在动。改成"这一串里，λ_j 这个值还在不在里面"。
+       ② 门槛取读数报得出的精度（三位小数 → 5e−4），不能取 1e−9：
+          滑块最细只到 0.1°，永远到不了精确的 42.135°，1e−9 那根线在任何够得着的角度上
+          都不会被跨过——读数就会一直说"两个都在动"，而图上那个倍数一位小数都没变。 */
+    var rows = [], pinned = 0, drift = [0, 0];
+    var probes = [0, 2, 5, 20, 60];
+    var series = [];
+    for (var i = 0; i < probes.length; i++) {
+      var g = probes[i] * state.gain;
+      var M = L.observeMat(A, L.vec(g, g), cv);
+      var e = L.eigen(M);
+      var pair = e.type === "real" ? [e.l1, e.l2] : [e.re, e.im];
+      series.push({ g: g, lam: pair });
+      rows.push("L ＝ (" + g.toFixed(1) + ", " + g.toFixed(1) + ") → " +
+        pair[0].toFixed(3) + " / " + pair[1].toFixed(3));
+    }
+    var base = [EIG.l1, EIG.l2];
+    for (var j = 0; j < 2; j++) {
+      var worstJ = 0;
+      for (var i2 = 0; i2 < series.length; i2++) {
+        var best = Infinity;
+        for (var m2 = 0; m2 < 2; m2++) best = Math.min(best, Math.abs(series[i2].lam[m2] - base[j]));
+        worstJ = Math.max(worstJ, best);
+      }
+      drift[j] = worstJ;
+    }
+    /* ③ 差一点点的方向上，被藏起来的那个不是"一位不动"，而是"动得比另一个慢两个数量级"。
+       判据照这个写：不到另一个的 2%，或小到读数印不出来，就算「钉死」。 */
+    for (var j2 = 0; j2 < 2; j2++) {
+      if (drift[j2] < Math.max(5e-4, 0.02 * drift[1 - j2])) pinned++;
+    }
+
+    document.getElementById("vph").textContent = state.deg.toFixed(1) + "°";
+    document.getElementById("vlam").textContent = state.gain.toFixed(1) + "×";
+
+    document.getElementById("ro").innerHTML =
+      "c ＝ (" + cv.x.toFixed(3) + ", " + cv.y.toFixed(3) + ")，读数 y ＝ " +
+      cv.x.toFixed(2) + "θ " + (cv.y >= 0 ? "+ " : "− ") + Math.abs(cv.y).toFixed(2) + "ω\n" +
+      "O ＝ [C; CA] 的交叉相减 ＝ " + detO.toFixed(4) + "\n" +
+      rows.join("\n") + "\n" +
+      "五组 L 之间：λ₁ 漂 " + drift[0].toFixed(3) + "、λ₂ 漂 " + drift[1].toFixed(3) +
+      "，钉死不动的一共 " + pinned + " 个（动的 " + (2 - pinned) + " 个）" +
+      "——与交叉相减 " + (Math.abs(detO) < 1e-3 ? "是零" : "不是零") + " 指向同一句话\n" +
+      (blind
+        ? "<span class='bad'>判词：追不上</span>——c 与那条特征线垂直，那条线上的运动不改变读数；" +
+          "它的倍数被钉在 " + blind.lam.toFixed(3) + " 上，L 加到多大也几乎不动\n" +
+          "<span class='warn'>反例／边界：</span>把角度挪开一度：交叉相减就不再是零，两个倍数会一起被挪走。可见「看不见」不是力度问题，是测的方向问题"
+        : "<span class='ok'>判词：追得上</span>——两个方向都进得来，两笔总有办法把两个倍数都挪到左半边\n" +
+          "<span class='warn'>反例／边界：</span>把角度挪到 " + BLIND[0].toFixed(1) + "° 或 " +
+          BLIND[1].toFixed(1) + "°：那条特征线正好躺在一条等值线里，" +
+          "交叉相减垮成零，任你怎么加力都有一个倍数挪不动");
+  }
+
+  var sph = document.getElementById("sph"), slam = document.getElementById("slam");
+  sph.addEventListener("input", function () { state.deg = parseFloat(sph.value) || 0; draw(); });
+  slam.addEventListener("input", function () { state.gain = parseFloat(slam.value) || 0; draw(); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

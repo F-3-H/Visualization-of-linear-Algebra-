@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 03 · 让影子跟着跑 —— 看不见的状态</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">看不见的状态 · 视角 03<small>让影子跟着跑：模型复制品的偏差长在哪儿</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--u)"></i>偏差自己走的那条路 e(t)</span>
+      <span><i class="dot" style="background:var(--sum)"></i>每过 T/8 打一个记号（间距在拉宽）</span>
+      <span><i class="dot" style="background:var(--purple)"></i>初值差 e₀</span>
+      <span style="margin-left:auto">横轴＝θ，纵轴＝ω；红／青两条线是那两个特征方向</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">差分那条路走不通，退一步：既然知道自己手里是什么系统，就照它造一个复制品，让复制品跟着一起跑。它的初值不可能和真的分毫不差——这一站只看一件事：那点差别接下来会怎么样。</p>
+
+    <div class="ctl">
+      <label>初值差的方向<output id="vp">30°</output></label>
+      <input type="range" id="sp" min="0" max="360" step="1" value="30">
+    </div>
+    <div class="ctl">
+      <label>初值差有多大<output id="vq">0.40</output></label>
+      <input type="range" id="sq" min="0.05" max="0.8" step="0.05" value="0.4">
+    </div>
+    <div class="ctl">
+      <label>跑多久 T<output id="vt">2.0</output></label>
+      <input type="range" id="st" min="0.5" max="3" step="0.1" value="2">
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>偏差不跟着谁走，它跟着表走。</b>真状态与影子看的是同一张表、同一个输入，把两式一减，输入没了、常数没了，只剩 <b>e′ ＝ Ae</b>。所以"影子差多少"根本不是初值的事，是这张表的事——上一站那两条线，就是它全部的去向。图上画的正是这条偏差自己走的路：从 e₀ 出发，沿着红青两条方向分头走，谁长得快谁就说了算。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；λ₁＝0.905（红，跑掉），λ₂＝−1.105（青，回来）；e 偏差。</span>
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 3, pad: 38 });
+  var A = L.stickMat(1, 0.2);
+  var EIG = L.eigen(A);
+  var state = { deg: 30, mag: 0.4, T: 2 };
+  var N = 200;
+
+  function dirOf(deg) {
+    var r = deg * Math.PI / 180;
+    return L.vec(Math.cos(r), Math.sin(r));
+  }
+
+  /* 把偏差按两条特征方向分开：解 [v₁ v₂]·c ＝ e₀。
+     不拿"投影"当分解——两条方向未必互相垂直，投影会算错系数。 */
+  function split(e0) {
+    var M = L.mat(EIG.v1.x, EIG.v2.x, EIG.v1.y, EIG.v2.y);
+    var c = L.solve(M, e0);
+    return c ? { c1: c.x, c2: c.y } : { c1: NaN, c2: NaN };
+  }
+
+  function eigenLine(v, color, width) {
+    var R = view.reach();
+    view.line(L.vec(-v.x * R, -v.y * R), L.vec(v.x * R, v.y * R), { color: color, width: width });
+  }
+
+  function inFrame(p, m) {
+    var e = view.extent(), k = m == null ? 0.05 : m;
+    return p.x >= e.x0 + k && p.x <= e.x1 - k && p.y >= e.y0 + k && p.y <= e.y1 - k;
+  }
+
+  /* 偏差一旦长到画框以外，就得把它从"上一个点"在边界上截一刀——
+     不截的话线会先拐到框外再消失，看着像自己断的。
+     画框不从内容算：这一站要的正是"长到框外去了"这件事，
+     取景跟着内容缩，就把要说的那句结论一起缩没了。（画框固定，读数照实报大小。） */
+  function clipToFrame(pts) {
+    var e = view.extent(), m = 0.05;
+    var x0 = e.x0 + m, x1 = e.x1 - m, y0 = e.y0 + m, y1 = e.y1 - m;
+    var inside = [];
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i];
+      if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) { inside.push(p); continue; }
+      var prev = inside.length ? inside[inside.length - 1] : pts[i - 1] || p;
+      var dx = p.x - prev.x, dy = p.y - prev.y, s = 1;
+      if (dx > 1e-12) s = Math.min(s, (x1 - prev.x) / dx);
+      if (dx < -1e-12) s = Math.min(s, (x0 - prev.x) / dx);
+      if (dy > 1e-12) s = Math.min(s, (y1 - prev.y) / dy);
+      if (dy < -1e-12) s = Math.min(s, (y0 - prev.y) / dy);
+      if (s >= 0 && s < 1) inside.push(L.vec(prev.x + dx * s, prev.y + dy * s));
+      return { pts: inside, exit: inside[inside.length - 1] || null };
+    }
+    return { pts: inside, exit: null };
+  }
+
+  /* 标签往画框中心那一侧长：贴边的字往边上写就会出框。 */
+  function labelAt(p, s, color) {
+    var e = view.extent(), cx = (e.x0 + e.x1) / 2, cy = 0;
+    var right = p.x > cx;
+    view.text(p, s, {
+      color: color, bold: true,
+      dx: right ? -10 : 10, align: right ? "right" : "left",
+      dy: p.y > cy ? -14 : 14
+    });
+  }
+
+  function draw() {
+    var e0 = L.scale(dirOf(state.deg), state.mag);
+
+    /* 偏差自己走的路：e(t) ＝ e^{At}·e₀。真值与影子都在这条路上被推着走，
+       把两式一减，输入与常数都没了，剩下能决定它的只有这张表和这个初值方向。 */
+    var pts = [], i;
+    for (i = 0; i <= N; i++) pts.push(L.apply(L.expm2(A, state.T * i / N), e0));
+    var cut = clipToFrame(pts);
+
+    view.clear();
+    view.grid({ step: 0.5, xName: "θ", yName: "ω" });
+    eigenLine(EIG.v1, D.C.red, 2);
+    eigenLine(EIG.v2, D.C.v, 2);
+    view.polyline(cut.pts, { color: D.C.u, width: 2.6 });
+
+    /* 每过 T/8 打一个记号：同一段时间走的路越来越长，这一眼就看得出"在加速" */
+    for (i = 0; i <= 8; i++) {
+      var q = L.apply(L.expm2(A, state.T * i / 8), e0);
+      if (inFrame(q)) view.dot(q, { color: D.C.sum, r: 3.5 });
+    }
+
+    view.dot(L.vec(0, 0), { color: D.C.axis, r: 3 });
+    view.dot(e0, { color: D.C.purple, r: 6 });
+    labelAt(e0, "初值差 e₀", D.C.purple);
+
+    var end = pts[N];
+    if (cut.exit) {
+      view.ring(cut.exit, { color: D.C.ghost, r: 7, width: 1.6 });
+      labelAt(cut.exit, "跑出画框", D.C.ghost);
+    } else if (inFrame(end)) {
+      view.dot(end, { color: D.C.u, r: 5 });
+      labelAt(end, "T 秒以后", D.C.u);
+    }
+
+    view.text(L.vec(EIG.v1.x * view.reach() * 0.62, EIG.v1.y * view.reach() * 0.62), "跑掉的那条",
+      { color: D.C.red, bold: true, dx: 8, dy: -14 });
+    view.text(L.vec(-EIG.v2.x * view.reach() * 0.55, -EIG.v2.y * view.reach() * 0.55), "回来的那条",
+      { color: D.C.v, bold: true, dx: -8, dy: 10, align: "right" });
+
+    /* 两条算路：矩阵指数，与"两个系数乘各自的倍数" */
+    var c = split(e0);
+    var eT = L.add(
+      L.scale(EIG.v1, c.c1 * Math.exp(EIG.l1 * state.T)),
+      L.scale(EIG.v2, c.c2 * Math.exp(EIG.l2 * state.T)));
+    var numErr = L.norm(end);
+    var anaErr = L.norm(eT);
+
+    document.getElementById("vp").textContent = state.deg + "°";
+    document.getElementById("vq").textContent = state.mag.toFixed(2);
+    document.getElementById("vt").textContent = state.T.toFixed(1);
+
+    var pct1 = Math.abs(c.c1) / (Math.abs(c.c1) + Math.abs(c.c2) + 1e-12);
+    document.getElementById("ro").innerHTML =
+      "初值差 " + state.mag.toFixed(2) + "，方向 " + state.deg + "°\n" +
+      "按两条方向分开：c₁ ＝ " + c.c1.toFixed(3) + "（配 λ₁ ＝ +0.905），c₂ ＝ " +
+      c.c2.toFixed(3) + "（配 λ₂ ＝ −1.105）\n" +
+      "跑了 " + state.T.toFixed(1) + " 秒以后，偏差 ＝ " + numErr.toFixed(3) +
+      "（起手的 " + (numErr / (state.mag || 1)).toFixed(1) + " 倍）\n" +
+      (cut.exit
+        ? "（空心圈：偏差已经长到画框外，画框到 " + view.range().toFixed(1) + " 为止，再往外只给数字）\n"
+        : "") +
+      "<span class='ok'>互证：</span>另一条路（两个系数各乘 e^{λt} 再加起来）得 " + anaErr.toFixed(3) +
+      "，两条路差 " + Math.abs(numErr - anaErr).toExponential(1) + "\n" +
+      (pct1 > 0.02
+        ? "<span class='bad'>判词：越差越远</span>——偏差里有 " + (pct1 * 100).toFixed(0) +
+          "% 落在红线上，那一份按 e^{0.905t} 长，迟早把影子甩掉\n"
+        : "<span class='ok'>判词：恰好追得上</span>——偏差几乎全落在青线上\n") +
+      (pct1 > 0.02
+        ? "<span class='warn'>反例／边界：</span>把方向拖到 312.1°（青线那条）：偏差几乎只剩回来的那一份，影子自己就追上来了。可这是巧合——真实系统的初值差不会正好落在一条特征方向上。"
+        : "<span class='warn'>反例／边界：</span>现在这个方向正好是青线。往旁边挪一度试试——同一张表，方向差一点点，结局就翻过来");
+  }
+
+  var sp = document.getElementById("sp"), sq = document.getElementById("sq"), st = document.getElementById("st");
+  sp.addEventListener("input", function () { state.deg = parseFloat(sp.value) || 0; draw(); });
+  sq.addEventListener("input", function () { state.mag = parseFloat(sq.value) || 0.1; draw(); });
+  st.addEventListener("input", function () { state.T = parseFloat(st.value) || 1; draw(); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

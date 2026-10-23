@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 02 · 差分这条路 —— 看不见的状态</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">看不见的状态 · 视角 02<small>差分这条路：把两个读数相减再除以间隔</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--u)"></i>真正的角速度</span>
+      <span><i class="dot" style="background:var(--sum)"></i>差分估出来的角速度</span>
+      <span style="margin-left:auto">横轴＝时间，纵轴＝角速度</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">最省事的想法：歪的多少每时每刻都测得到，那"歪得多快"不就是两次读数相减、再除以中间隔的时间么。这一站就拿这条路去撞一撞——它在纸上是对的，在手里不一定。</p>
+
+    <div class="ctl">
+      <label>间隔 h＝两次读数隔多久<output id="vh">0.05</output></label>
+      <input type="range" id="sh" min="0.005" max="0.2" step="0.005" value="0.05">
+    </div>
+    <div class="ctl">
+      <label>噪声 σ＝每次读数最多差多少<output id="vs">0.005</output></label>
+      <input type="range" id="ss" min="0" max="0.02" step="0.001" value="0.005">
+    </div>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>两头夹。</b>间隔越小，两次读数之间的弯曲就被忽略得越少（截断误差变小）；可间隔越小，两次读数各自那点噪声相减之后也被除以更小的数（噪声被放大）。所以这条路上不存在"越精细越好"，只存在一个折中。<b>而"折中"不是解——真正的解是换一条路。</b></p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；λ＝0.905 是棍子那个正倍数；h 采样间隔；σ 读数噪声。</span>
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 0.62, pad: 38 });
+  var LAM = 0.905, TH0 = 0.2, T = 1.5;
+  var state = { h: 0.05, s: 0.005 };
+
+  /* 棍子只歪一点点时，角度按 e^{λt} 长——这是上一站那张表直接给出来的。 */
+  function theta(t) { return TH0 * Math.exp(LAM * t); }
+  function omega(t) { return LAM * theta(t); }
+
+  /* 图上的坐标平移：时间 0..T 横着放，速度那一段竖着放。
+     平移量取的是这段速度的中段（ω 从 0.18 长到 0.70，取 0.44），
+     这样曲线占满画框，而不是被挤在中间一条缝里。 */
+  function P(t, w) { return L.vec(t - T / 2, w - 0.44); }
+
+  function draw() {
+    var n = Math.max(2, Math.round(T / state.h));
+    var samples = L.sampleTheta(theta, T, state.h, state.s, 20261023);
+    var est = L.diffEstimate(samples);
+
+    view.clear();
+    /* 两条零轴都会横穿数据，刻度数字正好压在曲线上——刻度挪到画框下沿与左沿。 */
+    view.grid({ step: 0.2, axes: false, labelAt: "edge" });
+
+    /* 真值曲线 */
+    var cur = [];
+    for (var i = 0; i <= 120; i++) {
+      var t = T * i / 120;
+      cur.push(P(t, omega(t)));
+    }
+    view.polyline(cur, { color: D.C.u, width: 2.6 });
+
+    /* 差分的估计：每一个间隔给一个点。
+       h 调到很小、噪声却很大时，估计值会被 2σ/h 甩到画框外面去（这正是这一站要说的事），
+       所以只画落在画框里的那一段，断口处不连线——把点画到画布外，读者看到的是"图上什么都没有"，
+       而真相是"它已经甩出去了"，这两件事必须分开。 */
+    var prev = null, maxErr = 0, worst = null, outCount = 0;
+    var e = view.extent(), mg = 0.02;
+    function inView(p) {
+      return p.x >= e.x0 + mg && p.x <= e.x1 - mg && p.y >= e.y0 + mg && p.y <= e.y1 - mg;
+    }
+    for (var k = 0; k < est.length; k++) {
+      var q = P(est[k].t, est[k].w);
+      var err = Math.abs(est[k].w - omega(est[k].t));
+      if (err > maxErr) { maxErr = err; worst = q; }
+      if (!inView(q)) { outCount++; prev = null; continue; }
+      if (prev) view.line(prev, q, { color: D.C.sum, width: 1.6 });
+      prev = q;
+      view.dot(q, { color: D.C.sum, r: 3 });
+    }
+    if (worst && inView(worst)) view.dot(worst, { color: D.C.red, r: 6 });
+
+    view.text(P(0.06, 0.70), "真正的角速度", { color: D.C.u, bold: true, dx: 4, dy: -6 });
+    view.text(P(0.06, 0.62), "差分估出来的", { color: D.C.sum, bold: true, dx: 4, dy: 10 });
+
+    /* 两部分的账各算一遍，与被测出来的最大误差对读 */
+    var thMax = theta(T);
+    var trunc = thMax * LAM * LAM * state.h / 2;
+    var noise = 2 * state.s / state.h;
+    var bound = L.diffBound(thMax, LAM, state.h, state.s);
+    var hStar = Math.sqrt(4 * state.s / (thMax * LAM * LAM));
+
+    document.getElementById("vh").textContent = state.h.toFixed(3);
+    document.getElementById("vs").textContent = state.s.toFixed(3);
+    document.getElementById("ro").innerHTML =
+      "h ＝ " + state.h.toFixed(3) + " 秒，σ ＝ " + state.s.toFixed(3) +
+      "，一共 " + est.length + " 个估计点\n" +
+      "实测最大误差 ＝ " + maxErr.toFixed(3) + "（红圈那个点）\n" +
+      "上界 ＝ " + bound.toFixed(3) + " ＝ 截断 " + trunc.toFixed(3) + " ＋ 噪声 " + noise.toFixed(3) + "\n" +
+      (outCount
+        ? "<span class='bad'>甩出画框：</span>" + outCount + " 个估计点已经跑到画框外面（±" +
+          view.range().toFixed(2) + " 以外），图上只画了留下来的那些——这不是画不出来，是估出来的数已经不是那个量级了\n"
+        : "") +
+      "<span class='ok'>互证：</span>实测那个数与「截断＋噪声」这条式子对得上——一条是从图上量出来的，一条是从展开式算出来的\n" +
+      "误差占真值的比例 ＝ " + (maxErr / omega(T) * 100).toFixed(0) + "%\n" +
+      (maxErr > 0.25
+        ? "<span class='bad'>判词：这条路不可用</span>——估出来的角速度已经不比真值小多少\n"
+        : (maxErr > 0.08
+          ? "<span class='warn'>判词：勉强</span>——误差已经是要用的那个量的一成以上\n"
+          : "<span class='ok'>判词：还算准</span>——但这只是噪声很小的时候\n")) +
+      (state.s > 0 && hStar <= 0.2
+        ? "<span class='warn'>反例／边界：</span>把 h 拖到 " + hStar.toFixed(3) + " 附近是最省的折中；再小下去，噪声那一项（2σ/h）就开始反过来吃掉你。σ 是" +
+          (state.s * 1000).toFixed(0) + "‰ 时这条路上没有比这更好的间隔了"
+        : "<span class='warn'>反例／边界：</span>把噪声拖到 0：误差随 h 一路变小，看着这条路是通的——可真实的读数从来不是干净的");
+  }
+
+  var sh = document.getElementById("sh"), ss = document.getElementById("ss");
+  sh.addEventListener("input", function () { state.h = parseFloat(sh.value) || 0.05; draw(); });
+  ss.addEventListener("input", function () { state.s = parseFloat(ss.value) || 0; draw(); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); draw();
+})();
+</script>
+</body>
+</html>

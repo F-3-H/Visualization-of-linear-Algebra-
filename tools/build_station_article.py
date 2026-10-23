@@ -38,6 +38,9 @@ SYMBOL = {
 }
 OP_CHARS = "=+−±>≥≤≠→,"
 UPRIGHT = {"mathrm", "operatorname", "textrm", "textnormal"}
+# 加在字符正上方的小记号。观测器那一篇通篇是 \hat{x}（模型的复制品），
+# 而"有没有戴帽子"正是区分"真的"与"算出来的替身"的唯一线索，不能省。
+ACCENTS = {"hat": "hat", "widehat": "hat", "bar": "bar", "overline": "bar", "tilde": "tilde"}
 
 
 class TexError(Exception):
@@ -162,6 +165,11 @@ def tex(src, display=False):
 
             elif cmd == "det":
                 push('<span class="up">det</span>')
+
+            elif cmd in ACCENTS:
+                # 帽子/横线：靠 CSS 在字符正上方挂一个小记号，不占横向宽度
+                arg, i = _read_arg(s, i)
+                push('<span class="%s">%s</span>' % (ACCENTS[cmd], tex(arg, display)))
 
             elif cmd in ("quad", "qquad"):
                 push('<span class="gap"></span>')
@@ -304,6 +312,20 @@ CSS = """
   sup,sub{font-size:.72em;line-height:0;}
   sup{vertical-align:.52em;}
   sub{vertical-align:-.22em;}
+  /* 帽子与横线：绝对定位挂在字符正上方，不挤动行距。
+     帽子用两条边转出来的"^"画，不用 ˆ 这个字符——那个字形在字体里
+     自带一段侧边距，居中之后看着往右偏半个字，x̂ 会像戴在邻座上。 */
+  .hat,.bar,.tilde{position:relative;display:inline-block;}
+  .hat::before{
+    content:"";position:absolute;left:50%;top:-.46em;width:.30em;height:.30em;
+    border-left:1.4px solid currentColor;border-top:1.4px solid currentColor;
+    transform:translateX(-50%) rotate(45deg);
+  }
+  .tilde::before{
+    content:"˜";position:absolute;left:0;right:0;top:-.5em;text-align:center;
+    font-size:.9em;line-height:1;pointer-events:none;
+  }
+  .bar::before{content:"";position:absolute;left:0;right:0;top:-.06em;border-top:1.2px solid currentColor;}
   /* 分式：竖着摞，分子下面一道细线 */
   .frac{display:inline-flex;flex-direction:column;vertical-align:-.62em;text-align:center;margin:0 .16em;}
   .frac .nu{border-bottom:1px solid currentColor;padding:0 .3em .05em;font-size:.94em;}
@@ -485,6 +507,50 @@ ARTICLES = {
                    "再拖一个目标 b 出来，看反推回去是一条唯一的箭头，还是一整条线上的每一捆都行。"},
         ],
     },
+    "observe": {
+        "md": "线性代数基础·看不见的状态.md",
+        "out": os.path.join("观测项目", "文章.html"),
+        "md_fig": "观测图/",
+        "web_fig": "图/",
+        "title": "看不见的状态 · 线性代数基础 13",
+        "eyebrow": "LINEAR ALGEBRA · 第 13 站",
+        "h1": ("线性代数基础 13", "看不见的状态"),
+        "lede": ("上一篇每一次反解，都先写下一支箭头：歪了多少、歪得多快。可手立棍子的时候，眼睛交上来的只是一个数。"
+                 "这一篇先撞「一个数定不住两个数」，再撞「两次读数相减也不能把它逼出来」，"
+                 "最后退到造一个复制品、用读数差把它拉住——而最后一站会拧一拧「测什么」，"
+                 "让你看见有一条特征线，整条躲在影子里。"),
+        "footer": [
+            '配图与可交互的五站见配套项目 <code>观测项目/</code>（离线自足，双击即可打开）；'
+            '配套的 Word 版是 <code>线性代数基础·看不见的状态.docx</code>。',
+            '本页所有曲线与读数可由 <code>tools/render_figures_observer.py</code> 复算'
+            '（a ＝ 1、c ＝ 0.2，两个倍数 +0.9050 与 −1.1050）；'
+            '<code>FIG_THEME=dark</code> 出的是本页这套墨底图，浅色那套给 Word。',
+            '想从头读这一站，进 <a href="index.html">项目导航页</a>；'
+            '上一篇是 <a href="../控制项目/文章.html">让会倒的东西站住</a>。',
+        ],
+        "stations": [
+            {"after": "一个数只能定住一维",
+             "src": "views/01-只看见一个数.html", "h": 886, "tag": "VIEW 01", "title": "只看见一个数",
+             "do": "拖画布上的绿点，再用滑条把橙点推远。<b>两个点的读数一栏始终是同一个数</b>，"
+                   "而右侧那两笔力会越差越多——那是「把看不见的那个当零」的代价。"},
+            {"after": "它在原理上被夹住了",
+             "src": "views/02-差分这条路.html", "h": 886, "tag": "VIEW 02", "title": "差分这条路",
+             "do": "把噪声 σ 拖到 0.008、再把间隔 h 拖到 0.005。<b>橙色那条折线会盖过真值</b>；"
+                   "反过来把 h 往大拖，误差的读数换成截断那一项在涨。"},
+            {"after": "谁笑到最后看谁长得快",
+             "src": "views/03-让影子跟着跑.html", "h": 944, "tag": "VIEW 03", "title": "让影子跟着跑",
+             "do": "先把「初值差有多大」从 0.05 拉到 0.8——<b>偏差的走势一点没变</b>；"
+                   "再把方向拖到 312.1°，同一份差自己缩了回去。方向才是那个要紧的量。"},
+            {"after": "这就是为什么行与列必须一开始就分清",
+             "src": "views/04-纠正减在第一列.html", "h": 900, "tag": "VIEW 04", "title": "纠正减在第一列",
+             "do": "把 l₁ 拖到 −0.2，两个倍数里有一个正好落在零上；<b>再往左一寸，判词就翻成「跑」</b>。"
+                   "拖到右上方那一片，两个倍数都进左半边。"},
+            {"after": "换了个位置说",
+             "src": "views/05-影子里那条线.html", "h": 928, "tag": "VIEW 05", "title": "影子里那条线",
+             "do": "把角度拖到 132.1°，再把力度开到 10 倍。<b>那个 +0.905 一动不动</b>；"
+                   "转到 42.1° 再试——被藏起来的是 −1.105，另一个还搬得动，影子追得上。"},
+        ],
+    },
 }
 
 
@@ -592,6 +658,8 @@ def main():
         build("control")
     if which in ("all", "one", "11"):
         build("one")
+    if which in ("all", "observe", "13"):
+        build("observe")
 
 
 if __name__ == "__main__":

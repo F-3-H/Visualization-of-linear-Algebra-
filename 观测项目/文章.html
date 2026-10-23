@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>看不见的状态 · 线性代数基础 13</title>
+<style>
+  :root{
+    --bg:#161618; --paper:#1e1e20; --panel:#252526;
+    --border:#3a3a3d; --text:#e9e9ec; --dim:#a0a0a8;
+    --accent:#00adb5; --accent-soft:rgba(0,173,181,.12);
+    --strong:#ffffff; --code-bg:#181818;
+    --warn:#ff9f43; --ok:#51cf66; --red:#ff6b6b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;
+    line-height:1.95; font-size:16.5px; padding:56px 22px 96px;
+  }
+  .wrap{max-width:860px;margin:0 auto;}
+  .eyebrow{
+    display:inline-block;font-size:12px;letter-spacing:.18em;color:var(--accent);
+    border:1px solid var(--accent);border-radius:999px;padding:4px 14px;margin-bottom:22px;
+  }
+  h1{font-size:clamp(26px,4vw,38px);font-weight:600;letter-spacing:.01em;line-height:1.35;margin-bottom:14px;}
+  .lede{color:var(--dim);font-size:14.5px;border-left:3px solid var(--accent);padding-left:14px;}
+  article{margin-top:40px;}
+  article p{margin:20px 0;text-align:justify;}
+  article strong{color:var(--strong);}
+  /* 展示公式：一块纸面，字是强调色，不用图片也不用客户端公式库 */
+  article .fm{
+    background:var(--paper);border:1px solid var(--border);border-radius:10px;
+    padding:20px 22px;margin:26px 0;text-align:center;font-size:18px;letter-spacing:.02em;
+    color:var(--accent);overflow-x:auto;line-height:2.2;
+  }
+  article figure{margin:30px 0;}
+  article figure img{width:100%;display:block;border-radius:12px;border:1px solid var(--border);}
+  article figure figcaption{color:var(--dim);font-size:13px;margin-top:10px;text-align:center;}
+  /* 行内数学 */
+  .im{font-size:1.02em;letter-spacing:.01em;white-space:nowrap;}
+  .im .op{margin:0 .12em;}
+  .fm .op{margin:0 .34em;}
+  .gap{display:inline-block;width:2.2em;}
+  .thin{display:inline-block;width:.22em;}
+  .up{font-style:normal;margin-right:.14em;}
+  .tx{font-style:normal;}
+  /* 上标下标 */
+  sup,sub{font-size:.72em;line-height:0;}
+  sup{vertical-align:.52em;}
+  sub{vertical-align:-.22em;}
+  /* 帽子与横线：绝对定位挂在字符正上方，不挤动行距。
+     帽子用两条边转出来的"^"画，不用 ˆ 这个字符——那个字形在字体里
+     自带一段侧边距，居中之后看着往右偏半个字，x̂ 会像戴在邻座上。 */
+  .hat,.bar,.tilde{position:relative;display:inline-block;}
+  .hat::before{
+    content:"";position:absolute;left:50%;top:-.46em;width:.30em;height:.30em;
+    border-left:1.4px solid currentColor;border-top:1.4px solid currentColor;
+    transform:translateX(-50%) rotate(45deg);
+  }
+  .tilde::before{
+    content:"˜";position:absolute;left:0;right:0;top:-.5em;text-align:center;
+    font-size:.9em;line-height:1;pointer-events:none;
+  }
+  .bar::before{content:"";position:absolute;left:0;right:0;top:-.06em;border-top:1.2px solid currentColor;}
+  /* 分式：竖着摞，分子下面一道细线 */
+  .frac{display:inline-flex;flex-direction:column;vertical-align:-.62em;text-align:center;margin:0 .16em;}
+  .frac .nu{border-bottom:1px solid currentColor;padding:0 .3em .05em;font-size:.94em;}
+  .frac .de{padding:.05em .3em 0;font-size:.94em;}
+  /* 矩阵：括号用两条弯边画，跟着内容高度走 */
+  .mx{display:inline-flex;align-items:stretch;vertical-align:middle;margin:0 .12em;}
+  .mx .br{width:.34em;border:1.4px solid currentColor;flex:0 0 auto;}
+  .mx .br.l{border-right:none;border-radius:5px 0 0 5px;}
+  .mx .br.r{border-left:none;border-radius:0 5px 5px 0;}
+  .mx .cells{display:grid;gap:0 .9em;align-items:center;padding:0 .3em;font-size:.95em;}
+  .mx .cells .c{text-align:center;padding:.06em 0;}
+  .sq .rad{border-top:1px solid currentColor;padding:0 .1em;}
+  /* 可交互一站 */
+  .station{
+    margin:34px 0;border:1px solid var(--accent);border-radius:14px;overflow:hidden;
+    background:var(--accent-soft);
+    width:min(1180px,calc(100vw - 56px));
+    margin-left:calc(50% - min(590px,50vw - 28px));
+  }
+  .station .bar{
+    display:flex;align-items:center;gap:10px;padding:12px 18px;
+    background:rgba(0,173,181,.16);font-size:13.5px;color:var(--accent);font-weight:600;
+  }
+  .station .bar .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+  .station .bar .sub{color:var(--dim);font-weight:400;margin-left:auto;font-size:12.5px;}
+  .station .body{padding:14px 18px 18px;}
+  .station .do{font-size:14.5px;color:var(--text);margin-bottom:12px;line-height:1.85;}
+  .station .do b{color:var(--accent);}
+  .station iframe{
+    width:100%;height:var(--h,660px);border:1px solid var(--border);border-radius:10px;background:var(--paper);
+  }
+
+  .station .fallback{font-size:13px;color:var(--dim);margin-top:10px;}
+  .station a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(0,173,181,.4);}
+  .station a:hover{border-bottom-color:var(--accent);}
+  footer{
+    margin-top:64px;padding-top:26px;border-top:1px solid var(--border);
+    color:var(--dim);font-size:13px;
+  }
+  footer p{margin:8px 0;}
+  footer a{color:var(--accent);text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  code{
+    font-family:Consolas,"Courier New",monospace;font-size:13px;color:var(--text);
+    background:var(--code-bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;
+  }
+  @media (max-width:720px){
+    body{padding:36px 16px 72px;font-size:15.5px;}
+    .station{width:calc(100vw - 40px);margin-left:calc(50% - 50vw + 20px);}
+    .station iframe{height:560px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="eyebrow">LINEAR ALGEBRA · 第 13 站</span>
+  <h1>线性代数基础 13<br>看不见的状态</h1>
+  <p class="lede">上一篇每一次反解，都先写下一支箭头：歪了多少、歪得多快。可手立棍子的时候，眼睛交上来的只是一个数。这一篇先撞「一个数定不住两个数」，再撞「两次读数相减也不能把它逼出来」，最后退到造一个复制品、用读数差把它拉住——而最后一站会拧一拧「测什么」，让你看见有一条特征线，整条躲在影子里。</p>
+
+  <article>
+
+<p>上一篇每一次反解，都先写下一支箭头：歪了多少、歪得多快，两个数并排。写起来毫不费力，因为那支箭头是我们自己画的。现在把画笔拿开，换成一只眼睛。</p>
+
+<p>眼睛交上来的不是一支箭头，是一个数。</p>
+
+<p>先别急着问"怎么从这一个数算出那一个"。先看看这一个数到底给了什么。上一篇里我们已经习惯把状态叫"一捆数"：两个数并排，就是平面上的一个点。那么"读数"是什么？读数把这个点压成一个数——它问的是"θ 等于多少"，答完就把 ω 丢掉不管了。于是平面上每一个点，都被贴上一个标签：θ 的值。标签相同的点，连成一条线。</p>
+
+<figure><img src="图/fig01-读数是一条线.png" alt="一次读数只告诉你落在哪条线上，不告诉你在线的哪儿" loading="lazy"><figcaption>一次读数只告诉你落在哪条线上，不告诉你在线的哪儿</figcaption></figure>
+
+<p>同一个 θ，ω 可以是 0.6，也可以是 1.9。两支箭头一样长地站在那条竖线上，读数一模一样，状态差得远。这不是眼睛不够好——把眼睛换成再贵的仪器，只要它一次只交一个数，这一整条线上的点它就分不出来。<strong>一个数只能定住一维。</strong></p>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 只看见一个数<span class="sub">配套项目 VIEW 01</span></div>
+      <div class="body">
+        <p class="do">拖画布上的绿点，再用滑条把橙点推远。<b>两个点的读数一栏始终是同一个数</b>，而右侧那两笔力会越差越多——那是「把看不见的那个当零」的代价。</p>
+        <iframe src="views/01-只看见一个数.html" title="只看见一个数" style="--h:886px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/01-只看见一个数.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>这件事的后果，上一篇已经替我们算好了。手使多大劲，是 k₁ 乘"歪了多少"再加上 k₂ 乘"歪得多快"——两笔里有一笔的原料你没有，这笔力就一定算歪。项目里把两个力并排印着：真值 4.38，按「把看不见的那个当零」算出来 2.70。差那一个数，不是算错了，是有一个数根本没进你的手。</p>
+
+<p>最省事的想法是先冒出来的：歪的多少每时每刻都测得到，那"歪得多快"不就是两次读数相减，再除以中间隔的时间么？这在纸上完全对——导数就是这么定义的。</p>
+
+<p>拿它试一下就知道了。间隔 h 越小，两次读数之间的那段弯曲被忽略得越少；可间隔越小，两次读数各自那点噪声相减之后，也被除以越小的数。<strong>两头夹。</strong>一头随 h 变小而变小，一头随 h 变小而变大。</p>
+
+<figure><img src="图/fig03-差分的两头夹.png" alt="间隔小下去：一头变小，一头变大" loading="lazy"><figcaption>间隔小下去：一头变小，一头变大</figcaption></figure>
+
+<p>图上有两条东西值得看。一条是那条直线：截断误差按 h 往下走，因为它来自把指数展开到二阶之后扔掉的余项，正比于 h 乘上"角速度的平方再乘 θ"。另一条是那条向上翘的虚线：噪声那一项是 2σ 除以 h，间隔减半它就翻一倍。两条线的和有一个最低点，那个最低点就是这条路上最好的结果——而它并不是"准"，只是"没那么糟"。σ 取 0.002 时最省的间隔在 0.11 秒附近，误差仍有一成左右；把 σ 拖到 0.008、把 h 拖到 0.005，估出来的曲线就成了一团毛刺，比真值本身还大。</p>
+
+<p>所以这条路的结论不是"参数没调好"，是<strong>它在原理上被夹住了</strong>：读数里那点噪声，你没有办法在相减之前把它去掉。</p>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 差分这条路<span class="sub">配套项目 VIEW 02</span></div>
+      <div class="body">
+        <p class="do">把噪声 σ 拖到 0.008、再把间隔 h 拖到 0.005。<b>橙色那条折线会盖过真值</b>；反过来把 h 往大拖，误差的读数换成截断那一项在涨。</p>
+        <iframe src="views/02-差分这条路.html" title="差分这条路" style="--h:886px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/02-差分这条路.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>退回去问一句更笨的话。既然我们知道这个系统是什么——那张表、那个 a、那个 c，都是自己写的——为什么不照着它造一个复制品，让它跟着一起跑？</p>
+
+<p>复制品按同一张表走，也吃同样的输入。它唯一的问题是第一刻的初值不可能和真的一模一样。于是要看的只有一件事：<strong>那点初值差，接下来会怎么样。</strong></p>
+
+<p>先不给它任何纠正，让它自己跑。</p>
+
+<figure><img src="图/fig04-影子不纠正.png" alt="不纠正：偏差按棍子自己的倍数长" loading="lazy"><figcaption>不纠正：偏差按棍子自己的倍数长</figcaption></figure>
+
+<p>偏差跑掉了。而且跑的方式很干净：把真状态和影子的两条式子相减——同一张表乘同一个状态、同一个输入减同一个输入——<strong>输入没了，常数没了，只剩偏差自己按那张表走</strong>。这件事值得停一下：影子差多少，根本不是"初值差多大"的事，是"这张表怎么样"的事。上一站那两条特征线，就是它全部的去向。</p>
+
+<p>于是半对数图上是一条直线，斜率就是那个正倍数 0.905。每过一秒钟，偏差乘 2.47（e^{0.905}）。</p>
+
+<p>这里要小心一个很容易滑过去的说法："偏差越跑越大，所以复制品不行。"</p>
+
+<p>把滑条拉一拉，这句话就站不住了。把初值差从 0.05 拉到 0.8——大了十六倍——偏差的走势一点没变，只是整条曲线上下平移：<strong>大小只是个放大倍数，它不决定结局。</strong>再换个东西动：把初值差的方向转一转，结局翻过来。转到青线那个方向，偏差自己缩，影子反而追上了。</p>
+
+<p>一个量（初值差的大小）怎么变都不影响结局，另一个量（方向）一动就翻天——这个对比本身就把不变量逼出来了：<strong>决定命运的不是差多少，是差在哪个方向上。</strong>方向只有两条要紧的，就是那张表的两个特征方向。落在红线上那一份按 e^{0.905t} 长，落在青线上那一份按 e^{−1.105t} 缩，两件事同时在发生，谁笑到最后看谁长得快。</p>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 让影子跟着跑<span class="sub">配套项目 VIEW 03</span></div>
+      <div class="body">
+        <p class="do">先把「初值差有多大」从 0.05 拉到 0.8——<b>偏差的走势一点没变</b>；再把方向拖到 312.1°，同一份差自己缩了回去。方向才是那个要紧的量。</p>
+        <iframe src="views/03-让影子跟着跑.html" title="让影子跟着跑" style="--h:944px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/03-让影子跟着跑.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>真实系统的初值差不会正好落在一条特征方向上，它总是两份都掺着。而只要掺进一点红线成分，前面那个"越跑越大"就回来了。真要把影子拉住，得动手。</p>
+
+<p>动手的办法是上一篇那条线的翻版。真值报一个读数，影子也报一个读数，两个数一减——<strong>这个差是你能拿到的东西</strong>，因为它只用到读数。把这份差乘上两笔系数，补回影子身上：</p>
+
+<div class="fm"><span class="hat">x</span>′<span class="op">=</span>A<span class="hat">x</span><span class="op">+</span>bu<span class="op">+</span>L<span class="thin"></span>(y<span class="op">−</span><span class="hat">y</span>)<span class="op">,</span><span class="gap"></span>y<span class="op">=</span>Cx<span class="op">,</span><span class="gap"></span><span class="hat">y</span><span class="op">=</span>C<span class="hat">x</span></div>
+
+<p>这里的记号要当场说清，因为它正是这一篇最容易读反的地方。<span class="im">C<span class="op">=</span>(1<span class="op">,</span>0)</span> 是<strong>一行</strong>——它把两个数压成一个数，所以它横着写；<span class="im">L<span class="op">=</span>(l<sub>1</sub><span class="op">,</span>l<sub>2</sub>)</span> 是<strong>一列</strong>——它是"补回两个数"的那两笔，所以它竖着写。一行乘一列是一个数，一列乘一行是一张表：</p>
+
+<div class="fm">LC<span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">l<sub>1</sub></span><span class="c">l<sub>2</sub></span></span><span class="br r"></span></span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(2,auto)"><span class="c">1</span><span class="c">0</span></span><span class="br r"></span></span><span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(2,auto)"><span class="c">l<sub>1</sub></span><span class="c">0</span><span class="c">l<sub>2</sub></span><span class="c">0</span></span><span class="br r"></span></span></div>
+
+<p>一张表减一张表，减出来的还是表。而这张表只有第一列不是零——所以这一减，<strong>只改写第一列</strong>。</p>
+
+<figure><img src="图/fig02-减在第一列.png" alt="同一道减法，减的行还是减的列" loading="lazy"><figcaption>同一道减法，减的行还是减的列</figcaption></figure>
+
+<p>把它和上一篇并排看，差别一下就出来了：控制那一篇里，力从 <span class="im">b<span class="op">=</span>(0<span class="op">,</span>1)</span> 一列进去、<span class="im">k</span> 一行乘上来，改的是<strong>第二行</strong>；观测这一篇里，读数是一行、<span class="im">L</span> 一列乘上去，改的是<strong>第一列</strong>。减行改的是"输入怎么进去"，减列改的是"读数怎么回来"。同一道减法，管的事完全不同——<strong>这就是为什么行与列必须一开始就分清，而不是最后再对答案。</strong></p>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 纠正减在第一列<span class="sub">配套项目 VIEW 04</span></div>
+      <div class="body">
+        <p class="do">把 l₁ 拖到 −0.2，两个倍数里有一个正好落在零上；<b>再往左一寸，判词就翻成「跑」</b>。拖到右上方那一片，两个倍数都进左半边。</p>
+        <iframe src="views/04-纠正减在第一列.html" title="纠正减在第一列" style="--h:900px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/04-纠正减在第一列.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>还有一层：这条读数差是外因，它一接上，就被并进了那张表里——<span class="im">A</span> 变成了 <span class="im">A<span class="op">−</span>LC</span>。外因不是从旁边推了它一把，是把自己写进了内因。这一点和上一篇接线时是同一个去向：表相乘、并进内因，于是内因不再是原来那个内因。</p>
+
+<p>新的那张表，两个倍数还是老规矩：对角线相加是 <span class="im"><span class="op">−</span>(l<sub>1</sub><span class="op">+</span>c)</span>，交叉相减是 <span class="im">l<sub>1</sub>c<span class="op">+</span>l<sub>2</sub><span class="op">−</span>a</span>。特征方程</p>
+
+<div class="fm">λ<sup>2</sup><span class="op">+</span>(l<sub>1</sub><span class="op">+</span>c)λ<span class="op">+</span>(l<sub>1</sub>c<span class="op">+</span>l<sub>2</sub><span class="op">−</span>a)<span class="op">=</span>0</div>
+
+<p>要偏差自己回来，看两个系数就够了：</p>
+
+<div class="fm">l<sub>1</sub><span class="op">+</span>c<span class="op">></span>0<span class="op">,</span><span class="gap"></span>l<sub>1</sub>c<span class="op">+</span>l<sub>2</sub><span class="op">></span>a</div>
+
+<p>取 <span class="im">a<span class="op">=</span>1</span>、<span class="im">c<span class="op">=</span>0.2</span>，就是 <span class="im">l<sub>1</sub><span class="op">></span><span class="op">−</span>0.2</span>、<span class="im">l<sub>2</sub><span class="op">></span>1<span class="op">−</span>0.2l<sub>1</sub></span>。两条都是直线，所以"能不能追回来"在 <span class="im">l<sub>1</sub></span>、<span class="im">l<sub>2</sub></span> 平面上是一片有边界的区域。</p>
+
+<p>要给一个具体的答案，取 <span class="im">L<span class="op">=</span>(5<span class="op">,</span>5)</span>：两个倍数成了 −1.27 与 −3.93，都在左半边；同一份初值差，四组力度跑出来的偏差曲线长这样——</p>
+
+<figure><img src="图/fig05-影子纠正.png" alt="同一份初值差，四组纠正力度" loading="lazy"><figcaption>同一份初值差，四组纠正力度</figcaption></figure>
+
+<figure><img src="图/fig06-稳定域.png" alt="纠正两笔的稳定域" loading="lazy"><figcaption>纠正两笔的稳定域</figcaption></figure>
+
+<p>看图先别急着读数。横轴是"按读数差补多少到 θ"，纵轴是"同一份差再分多少到 ω"。着色只说明一件事：右上方那一片，两个倍数都在左半边。两条边界各有一句话：竖着那条是"和为零"，斜着那条是"积为零"。<strong>跑出去有两种跑法</strong>，一种是一正一负（积为负），一种是两个一起正（和为正）——这跟上一篇闭环那张表的两句话是同构的，只是参数换了个位置。</p>
+
+<figure><img src="图/fig07-和与积.png" alt="判据不是一串数，是两条直线" loading="lazy"><figcaption>判据不是一串数，是两条直线</figcaption></figure>
+
+<p>判据可以这么推，也可以直接对表算。项目里两件事并排印着：一边拿上面那两条不等式，一边把 <span class="im">A<span class="op">−</span>LC</span> 的四个数代进特征方程解根，两边的数一模一样。</p>
+
+<figure><img src="图/fig08-两条算路.png" alt="同一个答案，两条算路" loading="lazy"><figcaption>同一个答案，两条算路</figcaption></figure>
+
+<p>这张散点图是一百多次随机取值画出来的：横轴是用"和"与"积"解出来的根，纵轴是直接对表算出来的两个倍数。每一个点都落在斜线上——两条互不相通的路给出同一批数。这类图在上一篇也出现过一次，用处不是好看，是让人不能只信一条。</p>
+
+<p>既然两个倍数是被"和"与"积"定住的，那就可以反过来：<strong>先说我要它们落在哪儿，再解出该补多少。</strong>这和上一篇把力反解出来是同一件事，只不过这次搬的是偏差的倍数。</p>
+
+<figure><img src="图/fig09-复平面搬家.png" alt="把偏差的两个倍数搬进左半边" loading="lazy"><figcaption>把偏差的两个倍数搬进左半边</figcaption></figure>
+
+<p>横轴是实部，左半边是自己回来的那一半。<span class="im">L</span> 从 <span class="im">(0<span class="op">,</span>0)</span> 一路加到 <span class="im">(6<span class="op">,</span>6)</span>，两个倍数先在右半边挤到一处（那是 <span class="im">(1<span class="op">,</span>1)</span> 附近，一对共轭复数），然后一起往左走。落在右半边的，偏差越跑越大；落在左半边的，影子追上真身。</p>
+
+<p>有一处边界要说清：<span class="im">l<sub>1</sub></span> 拖到 <span class="im"><span class="op">−</span>0.2</span> 的时候，"和"正好是零，两个倍数里有一个落在零上——它既不肯回来，也不跑掉，影子就停在半路的某个偏差上。这不是"力度差一点"，是<strong>恰好卡在分界线上</strong>。往左一寸，它就跑；往右一寸，它就回。</p>
+
+<p>前面每一站都默认了一件事：读数取的是 θ。可"取 θ"只是一个选择。眼睛可以量别的——比如量 θ 和 ω 的一个混合。这一站把测的方向拧一拧。</p>
+
+<p>读数 <span class="im">y<span class="op">=</span>c<sub>1</sub>θ<span class="op">+</span>c<sub>2</sub>ω</span> 是把这个点投影到某个方向上：标签相同的点连成一条条平行线，<strong>读数只告诉你落在哪条线上</strong>。方向一转，这族线跟着转。</p>
+
+<figure><img src="图/fig10-测的方向.png" alt="读数方向一转，等值线跟着转" loading="lazy"><figcaption>读数方向一转，等值线跟着转</figcaption></figure>
+
+<p>第一幅：测 θ，等值线是竖的。第二幅：测 θ 与 ω 的混合，等值线斜过去。第三幅：转到 42.1°，出现了一件怪事——有一条特征线整条躺在一条等值线里。</p>
+
+<figure><img src="图/fig11-盲方向.png" alt="红线正躺在一条等值线上" loading="lazy"><figcaption>红线正躺在一条等值线上</figcaption></figure>
+
+<p>躺进去意味着什么？沿着它走，读数一点不变。于是这条方向上的任何运动，读数都看不见；你看不见，就无从纠正。写成式子是这样：如果一条特征方向 <span class="im">v</span> 满足 <span class="im">Cv<span class="op">=</span>0</span>，那么</p>
+
+<div class="fm">(A<span class="op">−</span>LC)v<span class="op">=</span>Av<span class="op">−</span>L(Cv)<span class="op">=</span>λv</div>
+
+<p>对<strong>任何</strong> <span class="im">L</span> 都成立。那个倍数 λ 钉死在原地，<span class="im">L</span> 拖到多大都没用。</p>
+
+<figure><img src="图/fig12-钉子.png" alt="紫线里有一条从头到尾是平的" loading="lazy"><figcaption>紫线里有一条从头到尾是平的</figcaption></figure>
+
+<p>图上两组曲线：一组是测 θ（两个倍数都在动），一组是测的方向与那条特征线垂直（有一个从头到尾是平的，就是 +0.905）。把力度从 0 开到 60——比另一组大二十倍——那条平线一点没抬起来。</p>
+
+<p><strong>看得清不清，本身也有一个判据。</strong>把"这一刻读什么"和"它下一刻读什么"摞成两行，交叉相减：</p>
+
+<div class="fm">O<span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">C</span><span class="c">CA</span></span><span class="br r"></span></span><span class="op">,</span><span class="gap"></span><span class="up">det</span>O<span class="op">=</span>c<sub>1</sub><sup>2</sup><span class="op">−</span>c<span class="thin"></span>c<sub>1</sub>c<sub>2</sub><span class="op">−</span>a<span class="thin"></span>c<sub>2</sub><sup>2</sup></div>
+
+<p>不为零，两个方向都进得来；等于零，就有一条永远看不见。而这个式子什么时候为零？把 <span class="im">c<sub>1</sub><span class="op">=</span><span class="op">−</span>λc<sub>2</sub></span> 代进去就服了——<strong>零点恰好在两个倍数的相反数上</strong>。</p>
+
+<figure><img src="图/fig13-detO随角度.png" alt="看得清不清，是一条曲线上的两个零点" loading="lazy"><figcaption>看得清不清，是一条曲线上的两个零点</figcaption></figure>
+
+<p>角度从 0 扫到 180，这条曲线过零两次：42.1° 和 132.1°。转过这两个点，判据翻个面。</p>
+
+<p>到这里，上一篇那个"两处塌缩"的结构又出现了一次，而且这次是从同一个比喻里推出来的，不是另找的例子：<strong>看不见的那条方向，可能是"回来的"那条，也可能是"跑掉的"那条。</strong></p>
+
+<p>- 42.1° 时，藏在影子里的是 −1.105 那个倍数——它本来就会自己回来。另一个（+0.905）还能被 <span class="im">L</span> 搬动，所以影子<strong>追得上</strong>：看不见的那一份不用管，看得见的那一份管得住。</p>
+
+<p>- 132.1° 时，藏在影子里的是 +0.905——那个跑掉的。它钉死在原地，无论你补多少，偏差里只要有这一份，它迟早把影子甩掉。这一种<strong>没救</strong>。</p>
+
+<p>同一个交叉相减为零，一个还有救、一个彻底没救，差别只在被藏起来的那条方向本来是正是负。这和上一篇"b 落在红线上还救得回来、落在青线上就没救"是同一句话，换了个位置说。</p>
+
+<div class="station">
+      <div class="bar"><span class="dot"></span>可交互一站 · 影子里那条线<span class="sub">配套项目 VIEW 05</span></div>
+      <div class="body">
+        <p class="do">把角度拖到 132.1°，再把力度开到 10 倍。<b>那个 +0.905 一动不动</b>；转到 42.1° 再试——被藏起来的是 −1.105，另一个还搬得动，影子追得上。</p>
+        <iframe src="views/05-影子里那条线.html" title="影子里那条线" style="--h:928px"></iframe>
+        <p class="fallback">（这一站是单文件、零依赖，双击就能单独打开。）也可直接打开 <a href="views/05-影子里那条线.html" target="_blank" rel="noopener">这一站</a>。</p>
+      </div>
+    </div>
+
+<p>把四种测法摆在一起看：</p>
+
+<figure><img src="图/fig14-落点.png" alt="同一根棍子，四种测法" loading="lazy"><figcaption>同一根棍子，四种测法</figcaption></figure>
+
+<p>只测 θ、测一个混合、测另一个比例的混合，只要那个交叉相减不为零，两笔总有办法把两个倍数都挪进左半边。转到那个角度，力度开到六十倍，那个 +0.905 一动不动。</p>
+
+<p>所以这一篇真正落下来的动作，不是"把 <span class="im">l<sub>1</sub></span>、<span class="im">l<sub>2</sub></span> 调多少"，而是更靠前的一步：<strong>换一个测得到的东西。</strong>传感器的位置、测哪一个量、要不要再加一路读数——这些是改 <span class="im">C</span> 的事；<span class="im">L</span> 只是在给定的 <span class="im">C</span> 上把能做的做到头。<span class="im">C</span> 选错了，<span class="im">L</span> 调到天上去也是白搭。这在工程上有个朴素的说法：装传感器的时候花的钱，比调参数的时候省的心值钱。</p>
+
+<p>这个落点也说不出什么。观测器给你的，是"在模型正确的前提下，最好的猜测"——它不是测量，是<strong>算出来的替身</strong>。模型错的时候，影子照样跟着错，而且还错得很自信：偏差会收敛到某个非零的地方，收敛得越漂亮越像真的。它不会告诉你模型哪一项写错了，也不会告诉你哪个参数该重新量。那是另一件事，名字叫辨识，这一篇一个字也没碰。</p>
+
+<p>接着上一篇的三问往下走。上一篇问：回来还是跑掉？跑掉的那个方向够得着吗？够得着的话要它落在哪儿？这一篇问的是同一件事的另一面：</p>
+
+<p><strong>我手里的读数，能定住几个数？</strong>——一个数定住一维，其余的全在一条线上。</p>
+
+<p><strong>看不见的那一份，凭什么会被追回来？</strong>——看偏差的两个倍数在不在左半边；判据是两条直线。</p>
+
+<p><strong>哪一份根本追不回来？</strong>——看读数方向与特征方向垂不垂直。垂上了，那个倍数钉死，力度再大也没用。</p>
+
+<p>三问问完，"稳不稳"这件事就从一个数的问题，变成了两个数、一个方向、一处退化的几何问题。而最开始那个"一个数定不住两个数"，到这里有了一个不算安慰的安慰：<strong>定不住，但可以追</strong>——只要追的那条路不被自己堵死。</p>
+
+<p>深水区照例挖坑。三个：那条"看不见的方向"一旦有两个以上，判据还管不管用（多个状态时，交叉相减要换成一张更大矩阵的行列式，够不够看得清要看它的秩）；真实读数不只是噪声小，还可能<strong>慢半拍</strong>——传感器有延迟，那时候这个影子还能不能追上，是另一套算法；还有最初那条被放弃的路：差分的噪声放大，工程上不是没办法，是先"滤"再"差"，滤什么、滤掉多少，那又是频谱那一套东西。最要紧的那个坑还在原地：这一篇从头到尾用的都是"只歪一点点"的那张表。棍子真歪到三十度，这些 0.905 和 −1.105 全都不作数了。非线性是另一篇文章的事，我们欠它两次了。</p>
+
+<p>这一篇的图与可交互的部分是配套项目，在本目录的"观测项目"文件夹里，双击即可打开，全部离线。五个视角——只看见一个数、差分这条路、让影子跟着跑、纠正减在第一列、影子里那条线——每一站都能改条件、看后果，右侧都写着互证与反例；正文里每一张图，都是从项目的同一套数学里算出来的。读到哪儿手痒，就去把那个滑条拉到那儿：把噪声拖到 0.008、把间隔拖到 0.005，看差分怎么变成一团毛刺；把初值差的方向转到 312.1°，看偏差怎么自己缩回去；把测的方向拖到 132.1°，看那个 +0.905 怎么在 60 倍的力度下纹丝不动。看不见的东西不是不存在，它只是没落在你量的那一束光里。而这一篇里，读者自己上手拧的那几下，就是把光束挪开的那几下。</p>
+
+  </article>
+
+  <footer>
+    <p>配图与可交互的五站见配套项目 <code>观测项目/</code>（离线自足，双击即可打开）；配套的 Word 版是 <code>线性代数基础·看不见的状态.docx</code>。</p>
+    <p>本页所有曲线与读数可由 <code>tools/render_figures_observer.py</code> 复算（a ＝ 1、c ＝ 0.2，两个倍数 +0.9050 与 −1.1050）；<code>FIG_THEME=dark</code> 出的是本页这套墨底图，浅色那套给 Word。</p>
+    <p>想从头读这一站，进 <a href="index.html">项目导航页</a>；上一篇是 <a href="../控制项目/文章.html">让会倒的东西站住</a>。</p>
+  </footer>
+
+</div>
+</body>
+</html>

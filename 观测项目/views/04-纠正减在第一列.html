@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视角 04 · 纠正减在第一列 —— 看不见的状态</title>
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">看不见的状态 · 视角 04<small>纠正的两笔：减法只落在第一列上</small></div>
+  <a class="back" href="../index.html">← 返回导航</a>
+</header>
+
+<main class="shell">
+  <section class="stage">
+    <canvas id="cv" height="520"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--red);opacity:.55"></i>偏差自己跑掉</span>
+      <span><i class="dot" style="background:var(--u);opacity:.55"></i>偏差自己回来</span>
+      <span><i class="dot" style="background:var(--ink-soft);opacity:.55"></i>不肯回来也不跑（落在零上）</span>
+      <span style="margin-left:auto">横轴＝l₁，纵轴＝l₂</span>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>这一站做什么</h2>
+    <p class="sub">上一站说明：光造个复制品不行，偏差会自己跑。真正的办法是把"读数差"接回去——真值与影子各报一个读数，两个读数一减，乘上两笔系数，补回影子身上。这一站就调这两笔。</p>
+
+    <div class="ctl">
+      <label>l₁＝按"读数差"补多少到 θ<output id="v1">3.00</output></label>
+      <input type="range" id="s1" min="-1.5" max="4.5" step="0.05" value="3">
+    </div>
+    <div class="ctl">
+      <label>l₂＝同一份读数差，再分多少到 ω<output id="v2">1.00</output></label>
+      <input type="range" id="s2" min="-1" max="3" step="0.05" value="1">
+    </div>
+    <p class="note">也可以直接拖画框里那个点。</p>
+
+    <div class="readout" id="ro">—</div>
+
+    <p class="note"><b>只减一列。</b>读数取的是 θ，所以读数里根本没有 ω——读数是 C ＝ (1, 0)。L 乘 C 是一列乘一行，整张表里只有<b>第一列</b>被改写，第二列一动不动。对比上一篇：力从 b ＝ (0,1) 进去，b 乘 k 只改写<b>第二行</b>。同一道减法，改行还是改列，决定了你改的是"输入怎么进去"还是"读数怎么回来"。</p>
+  </aside>
+</main>
+
+<footer class="footer">
+  <span class="zh-CN"></span>参数记法：θ 偏角；ω 角速度；L＝(l₁,l₂) 两笔纠正；C＝(1,0) 读数那一行；A−LC 是偏差的表。</span>
+</footer>
+
+<script src="../assets/core.js"></script>
+<script src="../assets/draw.js"></script>
+<script>
+(function () {
+  "use strict";
+  var L = window.Lin, D = window.Draw;
+  var canvas = document.getElementById("cv");
+  var view = D.create(canvas, { range: 2, pad: 40 });
+  var A = L.stickMat(1, 0.2);
+  var CV = L.vec(1, 0);                    // 只测 θ
+  var state = { l1: 3, l2: 1 };
+
+  /* 图上的窗口：l₁ ∈ [−1.5, 4.5]、l₂ ∈ [−1, 3]。
+     这两个范围不是随手取的——画框是 3:2，横竖半轴之比 1.5，窗口也取 6:4，
+     于是参数地图正好铺满画框；再大就有一半画布是空白（上一版就是这样：
+     地图只铺到 l₁ ＝ 3.8，右边三成画布全空着，读者会以为那儿有什么）。
+     窗口里两条分界线都露着、稳定区与不稳定区都成片，够"拖一拖看判词变色"用。 */
+  var WIN = { x0: -1.5, x1: 4.5, y0: -1, y1: 3 };
+  function P(l1, l2) { return L.vec(l1 - 1.5, l2 - 1); }
+
+  function verdictOf(M) {
+    var mr = L.maxReal(M);
+    if (mr > 5e-3) return "跑";
+    if (mr < -5e-3) return "回";
+    return "零";
+  }
+
+  /* 参数地图逐格上色。两块要注意：
+     ① 底色不写死颜色，从绘图层读 token 再按透明度混到底色上——
+        换主题时地图跟着换，不用改这里；
+     ② 先画到一张 cols×rows 的小画布上（颜色已经混好、不透明），再整块贴上来。
+        直接在画布上逐格 fillRect 会把每格的边混两遍（半透明叠两次），
+        结果整张地图上浮出一层格子纹——不是风格，是画错了。 */
+  function hex2rgb(h) {
+    h = String(h || "").replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return [parseInt(h.slice(0, 2), 16) || 0, parseInt(h.slice(2, 4), 16) || 0, parseInt(h.slice(4, 6), 16) || 0];
+  }
+  function mix(fg, bg, t) {
+    return "rgb(" + Math.round(bg[0] + (fg[0] - bg[0]) * t) + "," +
+      Math.round(bg[1] + (fg[1] - bg[1]) * t) + "," +
+      Math.round(bg[2] + (fg[2] - bg[2]) * t) + ")";
+  }
+
+  var off = document.createElement("canvas");
+  var COLS = 120, ROWS = 80;
+  off.width = COLS; off.height = ROWS;
+
+  function paintMap() {
+    var bg = hex2rgb(D.C.paper);
+    var o = off.getContext("2d");
+    for (var i = 0; i < COLS; i++) {
+      for (var j = 0; j < ROWS; j++) {
+        var l1 = (WIN.x0 + (i + 0.5) / COLS * (WIN.x1 - WIN.x0));
+        var l2 = (WIN.y1 - (j + 0.5) / ROWS * (WIN.y1 - WIN.y0));
+        var v = verdictOf(L.observeMat(A, L.vec(l1, l2), CV));
+        var f = v === "跑" ? [D.C.red, 0.18] : (v === "回" ? [D.C.u, 0.16] : [D.C.soft, 0.20]);
+        o.fillStyle = mix(hex2rgb(f[0]), bg, f[1]);
+        o.fillRect(i, j, 1, 1);
+      }
+    }
+    var ctx = view.ctx;
+    var a = P(WIN.x0, WIN.y1), b = P(WIN.x1, WIN.y0);
+    var x0 = view.sx(a.x), y0 = view.sy(a.y), x1 = view.sx(b.x), y1 = view.sy(b.y);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, x0, y0, x1 - x0, y1 - y0);
+    ctx.restore();
+  }
+
+  function draw() {
+    var M = L.observeMat(A, L.vec(state.l1, state.l2), CV);
+    view.clear();
+    paintMap();
+    /* 刻度印的是 l₁、l₂ 本身（不是平移之后的坐标）；两条零轴在这里没有意义，去掉。 */
+    view.grid({ step: 0.5, axes: false, labelAt: "edge", axisOffset: { x: 1.5, y: 1 } });
+
+    /* 两条边界：l₁ ＝ −c（"和"为零的那条竖线），l₂ ＝ a − c·l₁（"积"为零的那条斜线） */
+    view.line(P(-0.2, WIN.y0), P(-0.2, WIN.y1), { color: D.C.ink, width: 1.6, dash: [7, 5] });
+    view.line(P(WIN.x0, 1 - 0.2 * WIN.x0), P(WIN.x1, 1 - 0.2 * WIN.x1),
+      { color: D.C.ink, width: 1.6, dash: [7, 5] });
+
+    var e = L.eigen(M);
+    var dot0 = P(state.l1, state.l2);
+    view.dot(dot0, { color: D.C.ink, r: 7 });
+
+    view.text(P(1.6, 1 - 0.2 * 1.6 + 0.22), "积 ＝ 0：l₂ ＝ a − c·l₁", { color: D.C.ink, bold: true });
+    view.text(P(-0.12, -0.72), "和 ＝ 0：l₁ ＝ −c", { color: D.C.ink, bold: true, dx: 4 });
+
+    document.getElementById("v1").textContent = state.l1.toFixed(2);
+    document.getElementById("v2").textContent = state.l2.toFixed(2);
+
+    /* 两条算路：一条从表的迹与行列式反解两个根，一条直接对表算特征值。
+       和 ＝ 迹 ＝ −(l₁ + c)，积 ＝ 行列式 ＝ l₁c + l₂ − a；
+       特征方程 λ² − 和·λ + 积 ＝ 0，两个根 ＝ (和 ± √(和² − 4积)) / 2。
+       （之前这里写成 -trace 又按 -sum 解，两处符号一起错，读数就自相矛盾了。） */
+    var sumC = L.trace(M), prodC = L.det(M);
+    var disc = sumC * sumC - 4 * prodC;
+    var r1 = (sumC + Math.sqrt(Math.max(0, disc))) / 2;
+    var r2 = (sumC - Math.sqrt(Math.max(0, disc))) / 2;
+    var lam = e.type === "real" ? [e.l1, e.l2] : [e.re, e.re];
+
+    document.getElementById("ro").innerHTML =
+      "L ＝ (" + state.l1.toFixed(2) + ", " + state.l2.toFixed(2) + ")\n" +
+      "A−LC ＝ [ " + M.a.toFixed(2) + "  " + M.b.toFixed(2) + " ]\n" +
+      "        [ " + M.c.toFixed(2) + "  " + M.d.toFixed(2) + " ]\n" +
+      "两个倍数：" + (e.type === "real"
+        ? "λ₁ ＝ " + (lam[0] > 0 ? "+" : "") + lam[0].toFixed(2) + "，λ₂ ＝ " + lam[1].toFixed(2)
+        : "一对复倍数 " + lam[0].toFixed(2) + " ± " + e.im.toFixed(2) + "i") + "\n" +
+      "判据：和 ＝ −(l₁ + c) ＝ " + sumC.toFixed(2) + "；积 ＝ l₁c + l₂ − a ＝ " + prodC.toFixed(2) + "\n" +
+      "<span class='ok'>互证：</span>拿这两个数反解 λ² " + (-sumC >= 0 ? "+" : "−") + " " +
+      Math.abs(sumC).toFixed(2) + "λ " + (prodC >= 0 ? "+" : "−") + " " + Math.abs(prodC).toFixed(2) +
+      " ＝ 0，得 " + r1.toFixed(2) + " / " + r2.toFixed(2) + "；直接对表算得 " +
+      lam[0].toFixed(2) + " / " + lam[1].toFixed(2) + "——两条路同一批数\n" +
+      (verdictOf(M) === "回"
+        ? "<span class='ok'>判词：偏差自己回来</span>——两笔都到位了\n"
+        : (verdictOf(M) === "跑"
+          ? "<span class='bad'>判词：偏差跑掉</span>——影子还是追不上\n"
+          : "<span class='warn'>判词：落在零上</span>——不肯回来，也不跑\n")) +
+      (prodC <= 0.02
+        ? "<span class='warn'>反例／边界：</span>积到这里快要变成零或负数：一个倍数落在 0 或正数上。积由 l₁c + l₂ 与 a 比出来——a 是棍子自己往外倒的那股劲，纠正抵不过它，就有一次抵不过；把 l₂ 拖上去试试"
+        : "<span class='warn'>反例／边界：</span>把 l₁ 拖到 −0.2（虚线那条）：和为零，两个倍数里有一个正好落在 0 上——影子停在半路。再往左，它就跟你翻脸了");
+  }
+
+  var dragging = false;
+  function toState(ev) {
+    var r = canvas.getBoundingClientRect();
+    var p = L.vec(view.wx(ev.clientX - r.left) + 1.5, view.wy(ev.clientY - r.top) + 1);
+    return { l1: Math.max(WIN.x0, Math.min(WIN.x1, p.x)), l2: Math.max(WIN.y0, Math.min(WIN.y1, p.y)) };
+  }
+  canvas.addEventListener("pointerdown", function (ev) {
+    dragging = true;
+    state = toState(ev);
+    if (canvas.setPointerCapture) canvas.setPointerCapture(ev.pointerId);
+    syncSliders(); draw();
+  });
+  canvas.addEventListener("pointermove", function (ev) {
+    if (!dragging) return;
+    state = toState(ev); syncSliders(); draw();
+  });
+  canvas.addEventListener("pointerup", function () { dragging = false; });
+  canvas.addEventListener("pointercancel", function () { dragging = false; });
+
+  var s1 = document.getElementById("s1"), s2 = document.getElementById("s2");
+  function syncSliders() { s1.value = state.l1; s2.value = state.l2; }
+  s1.addEventListener("input", function () { state.l1 = parseFloat(s1.value) || 0; draw(); });
+  s2.addEventListener("input", function () { state.l2 = parseFloat(s2.value) || 0; draw(); });
+
+  window.addEventListener("resize", function () { view.resize(); draw(); });
+  view.resize(); syncSliders(); draw();
+})();
+</script>
+</body>
+</html>
