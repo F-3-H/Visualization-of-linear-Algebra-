@@ -722,4 +722,104 @@ fig.suptitle("同一处退化、同一个面积为零，一个还有救、一个
              fontproperties=zh, color=C_INK, fontsize=10.5, y=0.035)
 save(fig, "fig14-两处塌缩.png")
 
-print("\n全部配图完成，共 14 张，输出目录：", OUT)
+
+# ============================================================
+# 图 17 · 三种乘法的形状：一行、一列，各自被送到哪儿
+# ============================================================
+def cells(ax, x, yc, nc, nr, cw=0.38, ch=0.30, tint=C_PANEL):
+    y = yc - nr * ch / 2
+    for i in range(nc):
+        for j in range(nr):
+            ax.add_patch(Rectangle((x + i * cw, y + j * ch), cw, ch,
+                                   facecolor=tint, edgecolor=C_AXIS, lw=1.3, zorder=3))
+    return x + nc * cw
+
+YC = 0.82
+fig = plt.figure(figsize=(10.8, 3.4)); fig.patch.set_facecolor(C_BG)
+
+# 左：一张表乘一列，出来的还是一列
+ax1 = fig.add_axes([0.01, 0.02, 0.31, 0.82]); ax1.set_xlim(0, 2.5); ax1.set_ylim(0, 1.6); ax1.axis("off")
+e1 = cells(ax1, 0.05, YC, 2, 2, tint=PALE_V)
+txt(ax1, ((0.05 + e1) / 2, 1.26), "表（内因）", color=C_V, fp=zh_xs, ha="center")
+txt(ax1, (e1 + 0.12, YC), "×", color=C_SOFT, fp=zh, ha="center")
+e2 = cells(ax1, e1 + 0.24, YC, 1, 2, tint=PALE_U)
+txt(ax1, (e1 + 0.24 + 0.19, 1.26), "b", color=C_U, fp=zh_xs, ha="center")
+txt(ax1, (e2 + 0.12, YC), "=", color=C_SOFT, fp=zh, ha="center")
+cells(ax1, e2 + 0.24, YC, 1, 2, tint=PALE_U)
+txt(ax1, (0.05, 0.30), "b 竖着写：一列进去，出来一列\n力才落得回一捆数上", color=C_U, fp=zh_xs)
+ax1.set_title("表 × 一列 ＝ 一列", fontproperties=zh, color=C_INK, fontsize=11.5, pad=2)
+
+# 中：一行乘一列，得到一个数
+ax2 = fig.add_axes([0.335, 0.02, 0.31, 0.82]); ax2.set_xlim(0, 2.5); ax2.set_ylim(0, 1.6); ax2.axis("off")
+e1 = cells(ax2, 0.05, YC, 2, 1, tint=PALE_SUM)
+txt(ax2, ((0.05 + e1) / 2, 1.26), "k（一行）", color=C_SUM, fp=zh_xs, ha="center")
+txt(ax2, (e1 + 0.12, YC), "×", color=C_SOFT, fp=zh, ha="center")
+e2 = cells(ax2, e1 + 0.24, YC, 1, 2, tint=PALE_U)
+txt(ax2, (e1 + 0.24 + 0.19, 1.26), "一捆数", color=C_U, fp=zh_xs, ha="center")
+txt(ax2, (e2 + 0.12, YC), "=", color=C_SOFT, fp=zh, ha="center")
+ring(ax2, (e2 + 0.42, YC), 0.14, C_SUM, fill=PALE_SUM, lw=1.8)
+txt(ax2, (e2 + 0.42, YC), "数", color=C_SUM, fp=zh_xs, ha="center")
+txt(ax2, (0.05, 0.30), "k 横着写：一行乘一列得一个数\n正好是力的大小", color=C_SUM, fp=zh_xs)
+ax2.set_title("一行 × 一列 ＝ 一个数", fontproperties=zh, color=C_INK, fontsize=11.5, pad=2)
+
+# 右：一列乘一行，得到一张表
+ax3 = fig.add_axes([0.66, 0.02, 0.33, 0.82]); ax3.set_xlim(0, 2.5); ax3.set_ylim(0, 1.6); ax3.axis("off")
+e1 = cells(ax3, 0.05, YC, 1, 2, tint=PALE_U)
+txt(ax3, (0.05 + 0.19, 1.26), "b", color=C_U, fp=zh_xs, ha="center")
+txt(ax3, (e1 + 0.12, YC), "×", color=C_SOFT, fp=zh, ha="center")
+e2 = cells(ax3, e1 + 0.24, YC, 2, 1, tint=PALE_SUM)
+txt(ax3, ((e1 + 0.24 + e2) / 2, 1.26), "k", color=C_SUM, fp=zh_xs, ha="center")
+txt(ax3, (e2 + 0.12, YC), "=", color=C_SOFT, fp=zh, ha="center")
+cells(ax3, e2 + 0.24, YC, 2, 2, tint=PALE_PUR)
+txt(ax3, (0.05, 0.30), "一列乘一行得一张表：只有一个角不是零\n——减上去，只改一行或只改一列",
+    color=C_PUR, fp=zh_xs)
+ax3.set_title("一列 × 一行 ＝ 一张表", fontproperties=zh, color=C_INK, fontsize=11.5, pad=2)
+
+fig.suptitle("写反一个方向，乘出来就不是你要的那个东西——行与列的形状，就是它们各自的去向",
+             fontproperties=zh, color=C_INK, fontsize=10.5, y=0.035)
+save(fig, "fig17-三种乘法的形状.png")
+
+# ============================================================
+# 图 15 · 换起点：轨迹全变，两条线不动
+# ============================================================
+fig = new_fig((7.8, 5.2))
+ax = fig.add_axes([0.09, 0.15, 0.88, 0.76])
+style_ax(ax, (-2.6, 2.6), (-2.6, 2.6), "θ", "ω")
+line_full(ax, V_RUN, (-2.6, 2.6), (-2.6, 2.6), C_RED, lw=1.4, alpha=0.75)
+line_full(ax, V_BACK, (-2.6, 2.6), (-2.6, 2.6), C_V, lw=1.4, alpha=0.75)
+STARTS = [(vec(0.55, 0.25), C_U, "起点 1"),
+          (vec(-0.45, 1.15), C_SUM, "起点 2"),
+          (vec(1.05, -0.55), C_PUR, "起点 3"),
+          (vec(-0.95, -0.35), C_GHOST, "起点 4")]
+for s0, col, lab in STARTS:
+    p = traj(A_STICK, s0, 2.6, 130, 2.5)
+    ax.plot(p[:, 0], p[:, 1], color=col, lw=2.4, zorder=4)
+    dot(ax, s0, col, r=0.06)
+    txt(ax, s0, lab, color=col, fp=zh_xs, dx=0.10, dy=0.14)
+txt(ax, (1.35, -2.05), "四个起点、四条轨迹：形状各不相同", color=C_INK, fp=zh_sm)
+txt(ax, (-2.45, 2.25), "两条直线：一动没动", color=C_RED, fp=zh_sm)
+ax.set_title("换掉的是一捆数本身，没换掉的是那张表", fontproperties=zh, color=C_INK, fontsize=11.5, pad=8)
+fig.text(0.5, 0.035, "两个倍数跟起点没有任何关系——它只认那张表",
+         ha="center", fontproperties=zh, color=C_INK, fontsize=10.5)
+save(fig, "fig15-换起点.png")
+
+# ============================================================
+# 图 16 · 手拿到的原料：一个数是量到的，另一个是自己比出来的
+# ============================================================
+fig = plt.figure(figsize=(9.2, 2.9)); fig.patch.set_facecolor(C_BG)
+ax = fig.add_axes([0.01, 0.02, 0.98, 0.82]); ax.set_xlim(0, 6.0); ax.set_ylim(0, 1.7); ax.axis("off")
+ax.add_patch(Rectangle((0.20, 0.62), 2.30, 0.78, facecolor=PALE_U, edgecolor=C_U, lw=1.6, zorder=3))
+txt(ax, (0.36, 1.16), "歪了多少", color=C_U, fp=zh)
+txt(ax, (0.36, 0.86), "量角器给的：这一刻的一个刻度", color=C_SOFT, fp=zh_xs)
+ax.add_patch(Rectangle((3.30, 0.62), 2.30, 0.78, facecolor=PALE_SUM, edgecolor=C_SUM, lw=1.6, zorder=3))
+txt(ax, (3.46, 1.16), "歪得多快", color=C_SUM, fp=zh)
+txt(ax, (3.46, 0.86), "上一刻的刻度、这一刻的刻度，相减再除以间隔", color=C_SOFT, fp=zh_xs)
+arrow(ax, (2.58, 1.01), (3.22, 1.01), color=C_AXIS, lw=1.6)
+txt(ax, (2.90, 1.20), "比出来的", color=C_AXIS, fp=zh_xs, ha="center")
+txt(ax, (0.20, 0.30), "同一个手，一手是量到的，一手是自己算的：右边这个数带着抖，抖多少取决于隔了多久看一次",
+    color=C_INK, fp=zh_sm)
+fig.text(0.5, 0.955, "手要算力，得先凑齐两个数——可它一次只拿到一个",
+         ha="center", fontproperties=zh, color=C_INK, fontsize=10.5)
+save(fig, "fig16-手拿到的两个数.png")
+
+print("\n全部配图完成，共 17 张，输出目录：", OUT)

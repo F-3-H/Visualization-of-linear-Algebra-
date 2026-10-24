@@ -626,4 +626,43 @@ ax.text(0.4, 0.30, "最后一行的力度开到 (60, 60)——比第一行大二
         color=C_INK, fontproperties=zh)
 save(fig, "fig14-落点.png")
 
-print("\n全部配图完成，共 14 张，输出目录：", OUT)
+
+# ============================================================
+# 图 15 · 一个瞬间的两个分量，和隔着半秒的两个数
+# ============================================================
+fig = plt.figure(figsize=(10.6, 3.6)); fig.patch.set_facecolor(C_BG)
+
+# 左：一个瞬间 —— 一支箭头，两个分量
+axL = fig.add_axes([0.02, 0.06, 0.42, 0.84]); axL.set_xlim(-0.5, 3.6); axL.set_ylim(-0.5, 2.9)
+axL.set_aspect("equal"); axL.axis("off")
+seg(axL, (0, 0), (3.0, 0), color=C_AXIS, lw=1.2)
+seg(axL, (0, 0), (0, 2.5), color=C_AXIS, lw=1.2)
+arrow(axL, (0, 0), (2.3, 1.9), color=C_U, lw=2.4)
+seg(axL, (2.3, 0), (2.3, 1.9), color=C_GHOST, lw=1.0, ls=(0, (4, 4)))
+seg(axL, (0, 1.9), (2.3, 1.9), color=C_GHOST, lw=1.0, ls=(0, (4, 4)))
+dot(axL, (2.3, 0), C_V, r=0.07); dot(axL, (0, 1.9), C_SUM, r=0.07)
+txt(axL, (2.3, -0.24), "歪了多少", color=C_V, fp=zh_sm, ha="center")
+txt(axL, (0.10, 2.14), "歪得多快", color=C_SUM, fp=zh_sm, ha="left")
+txt(axL, (0.05, 2.78), "一个瞬间：两个分量同时在场", color=C_INK, fp=zh)
+axL.set_title("我们以前画的：一支箭头", fontproperties=zh, color=C_SOFT, fontsize=11, pad=4)
+
+# 右：两回看 —— 时间轴上两个刻度，中间隔着 h
+axR = fig.add_axes([0.48, 0.06, 0.50, 0.84]); axR.set_xlim(-0.2, 6.2); axR.set_ylim(-0.4, 2.9)
+axR.axis("off")
+seg(axR, (0.2, 1.0), (5.9, 1.0), color=C_AXIS, lw=1.4)
+arrow(axR, (5.75, 1.0), (5.95, 1.0), color=C_AXIS, lw=1.4)
+for x, lab, col in [(2.0, "这一刻：0.12", C_U), (3.6, "半秒后：0.31", C_SUM)]:
+    seg(axR, (x, 1.0), (x, 1.42), color=col, lw=1.6)
+    dot(axR, (x, 1.42), col, r=0.075)
+    txt(axR, (x, 1.62), lab, color=col, fp=zh_sm, ha="center")
+seg(axR, (2.0, 0.62), (3.6, 0.62), color=C_GHOST, lw=1.2)
+txt(axR, (2.8, 0.42), "隔了 h ＝ 0.5 秒", color=C_SOFT, fp=zh_xs, ha="center")
+txt(axR, (2.8, 2.30), "两回看：每次只交一个数，两个数之间还隔着时间", color=C_INK, fp=zh, ha="center")
+txt(axR, (2.8, 0.10), "后一个数不是前一刻的另一个分量，是另一次量", color=C_SOFT, fp=zh_xs, ha="center")
+axR.set_title("眼睛实际给的：时间轴上两个刻度", fontproperties=zh, color=C_SOFT, fontsize=11, pad=4)
+
+fig.text(0.5, 0.015, "这一篇所有的麻烦，都从右边这张图开始——左边的箭头是我们替它补出来的",
+         ha="center", fontproperties=zh, color=C_INK, fontsize=10.5)
+save(fig, "fig15-一个瞬间与两回看.png")
+
+print("\n全部配图完成，共 15 张，输出目录：", OUT)

@@ -96,7 +96,7 @@ if (exists(articlePath)) {
   check("正文页不引外部脚本", !/<script[^>]*\ssrc=/.test(art));
   check("正文页 lang=zh-CN", art.includes('lang="zh-CN"'));
   const imgRefs = (art.match(/src="(图\/[^"]+)"/g) || []).map(s => s.slice(5, -1));
-  check("正文页引用 14 张图", imgRefs.length === 14, "实际 " + imgRefs.length);
+  check("正文页引用 17 张图", imgRefs.length === 17, "实际 " + imgRefs.length);
   check("正文页图片全部落盘", imgRefs.length > 0 && imgRefs.every(p => exists(path.join(ROOT, p))));
   const nFm = (art.match(/class="fm/g) || []).length;
   const nIm = (art.match(/class="im"/g) || []).length;
