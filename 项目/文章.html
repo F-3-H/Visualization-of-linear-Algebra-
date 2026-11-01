@@ -50,6 +50,20 @@
   sup,sub{font-size:.72em;line-height:0;}
   sup{vertical-align:.52em;}
   sub{vertical-align:-.22em;}
+  /* 帽子与横线：绝对定位挂在字符正上方，不挤动行距。
+     帽子用两条边转出来的"^"画，不用 ˆ 这个字符——那个字形在字体里
+     自带一段侧边距，居中之后看着往右偏半个字，x̂ 会像戴在邻座上。 */
+  .hat,.bar,.tilde{position:relative;display:inline-block;}
+  .hat::before{
+    content:"";position:absolute;left:50%;top:-.46em;width:.30em;height:.30em;
+    border-left:1.4px solid currentColor;border-top:1.4px solid currentColor;
+    transform:translateX(-50%) rotate(45deg);
+  }
+  .tilde::before{
+    content:"˜";position:absolute;left:0;right:0;top:-.5em;text-align:center;
+    font-size:.9em;line-height:1;pointer-events:none;
+  }
+  .bar::before{content:"";position:absolute;left:0;right:0;top:-.06em;border-top:1.2px solid currentColor;}
   /* 分式：竖着摞，分子下面一道细线 */
   .frac{display:inline-flex;flex-direction:column;vertical-align:-.62em;text-align:center;margin:0 .16em;}
   .frac .nu{border-bottom:1px solid currentColor;padding:0 .3em .05em;font-size:.94em;}
@@ -162,6 +176,20 @@
       </div>
     </div>
 
+<p>同一件事还能倒过来读，而这一遍更值钱。</p>
+
+<p>刚才把两列读成“两个去处”：横的那根被送到哪儿、竖的那根被送到哪儿。换个读法：<strong>这两列就是新的两根尺子</strong>——第一列是新的横，第二列是新的竖。底板没动，尺子换了。</p>
+
+<p>两种读法算的是同一道题。拿 <span class="im">A<span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(2,auto)"><span class="c">2</span><span class="c">1</span><span class="c">1</span><span class="c">2</span></span><span class="br r"></span></span></span> 试：一捆数 <span class="im"><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">1</span><span class="c">1</span></span><span class="br r"></span></span></span> 的意思是“1 个横 ＋ 1 个竖”。按“尺子换了”读，那个“1 个 ＋ 1 个”的构成一个字不改，只是横换成 A 的第一列 (2,1)、竖换成第二列 (1,2)——结果就是 1 个 (2,1) 加 1 个 (1,2)，等于 (3,3)。按“点被送走”读，算的是同一件事：<span class="im">A·(1<span class="op">,</span>1)<span class="op">=</span>(3<span class="op">,</span>3)</span>。一分不差。</p>
+
+<p>差别只在<strong>谁在动</strong>：前一种读法里，点在动、尺子不动；后一种里，尺子动了、点在尺子上的读数没动。什么时候必须用后一种？当你关心的不是“它跑到哪儿”，而是“同一支箭头换一套尺子量，读数是几”的时候。</p>
+
+<p>乘法那句口诀，在后一种读法里才有理由：结果的第 i 个分量，就是拿新尺子的第 i 个坐标，去数旧的那两组分量——“左边横的数分别乘右边竖的数”，不是要背的规矩，是换完尺子重新数一遍。</p>
+
+<p>这一步动的不是点，是点脚下的尺子。往后看，它的分量会越来越重：两张表相乘的时候，动的是对方那把尺子。</p>
+
+<figure><img src="图/fig15-构成没变尺子换了.png" alt="构成没变，尺子换了：同一个「1 个 ＋ 1 个」落到别处" loading="lazy"><figcaption>构成没变，尺子换了：同一个「1 个 ＋ 1 个」落到别处</figcaption></figure>
+
 <p>现在可以还上一篇文章欠的那笔账了。悬挂系统的规律是位移决定速度、速度决定加速度（第 10 篇那个反例的正式说法），写成相空间的语言：一捆数 (y, v) 进来，被规律作用一次，出去一捆数 (y′, v′)，其中 y′ 就是 v，v′ 由位移与速度按牛顿力学决定。一捆进去、一捆出来——中间那个作用，就是一张表，而表里的四个数，被 m、k、c 这三个内因参数彻底决定。上一篇文章那句“可以写成矩阵形式”，写全了就是这样：</p>
 
 <div class="fm"><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">y′</span><span class="c">v′</span></span><span class="br r"></span></span><span class="op">=</span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(2,auto)"><span class="c">0</span><span class="c">1</span><span class="c"><span class="op">−</span>k/m</span><span class="c"><span class="op">−</span>c/m</span></span><span class="br r"></span></span><span class="mx"><span class="br l"></span><span class="cells" style="grid-template-columns:repeat(1,auto)"><span class="c">y</span><span class="c">v</span></span><span class="br r"></span></span></div>
@@ -175,6 +203,14 @@
 <figure><img src="图/fig08-先后有别.png" alt="同样两张表，换个先后，终点就不同" loading="lazy"><figcaption>同样两张表，换个先后，终点就不同</figcaption></figure>
 
 <p>日常里这件事我们熟得很：先穿袜子、后穿鞋，人才出得了门；颠倒过来，先穿鞋再穿袜子，谁都做不到。两件事有先后，合起来的结果就不同——表也是这样，顺序也是内容的一部分。算法上怎么算合表？一列一列看：合表的第一列，就是被先摁的那张表的第一列、再被摁一次的结果；第二列同理。算法的口诀爱怎么记怎么记，但别把口诀当意义——意义是“先后两次作用”，不是“行点列”。</p>
+
+<p>那句“一列一列看”，藏着一个前提，值得当场指出来。</p>
+
+<p>合表的第一列，是先摁的那张表的第一列“再被摁一次”。被摁的是<strong>那一列本身</strong>——而它之所以能被摁，是因为它被写成了两个数，这两个数是按横竖那两根标准尺子读出来的。所以 A 作用 B，作用的是 B 的两列这两捆数，不是 B 所代表的那两根新轴。B 的两列一旦被当成箭头看，它们就已经站在标准尺子上了。</p>
+
+<p>同一根东西在两句话里换了身份：在“尺子换了”那句里，B 的两列是尺子；在“A 作用 B”这句里，B 的两列是待摁的箭头。换身份不换内容，但读的时候得清楚自己在哪一句里——<strong>这一问不答，合表就会被读成“A 又把 B 的新轴换了一遍”</strong>；实际发生的是：A 把 B 的两捆数送到了别处，这两捆数的新位置，成了合表的两根新尺子。</p>
+
+<p>每张表内部都默认着那副标准尺子。这个默认平时看不见，只有另一张表来作用它的时候才露面。</p>
 
 <figure><img src="图/fig09-合表的列.png" alt="合表的每一列，就是先摁那张表的对应列再被摁一次" loading="lazy"><figcaption>合表的每一列，就是先摁那张表的对应列再被摁一次</figcaption></figure>
 

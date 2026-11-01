@@ -441,4 +441,55 @@ for ax, (name, fn) in zip(axes, steps):
 fig.tight_layout()
 save(fig, "fig14-一捆数的一生.png")
 
-print("\n全部配图完成，共 14 张，输出目录：", OUT)
+
+# ============================================================
+# 图 15 · 构成没变，尺子换了：同一个「1 个 + 1 个」落到别处
+# ============================================================
+def panel(fig, box, xlim, ylim, xlabel, ylabel):
+    ax = fig.add_axes(box)
+    ax.set_facecolor(C_BG)
+    ax.set_xlim(*xlim); ax.set_ylim(*ylim); ax.set_aspect("equal")
+    ax.spines[["top", "right"]].set_visible(False)
+    for sp in ["left", "bottom"]:
+        ax.spines[sp].set_color(C_AXIS)
+    ax.tick_params(colors=C_SOFT, labelsize=8, length=3)
+    ax.set_xlabel(xlabel, fontproperties=zh_sm, color=C_SOFT)
+    ax.set_ylabel(ylabel, fontproperties=zh_sm, color=C_SOFT, rotation=0, labelpad=10)
+    ax.grid(True, color=C_GRID, linewidth=0.8); ax.set_axisbelow(True)
+    return ax
+
+A_NEW = mat(2, 1, 1, 2)
+fig = plt.figure(figsize=(9.8, 4.6)); fig.patch.set_facecolor(C_BG)
+
+axL = panel(fig, [0.05, 0.16, 0.40, 0.72], (-1.3, 2.9), (-1.3, 2.9), "横", "纵")
+arrow(axL, (0, 0), vec(1, 0), color=C_GHOST, lw=2.0)
+arrow(axL, (0, 0), vec(0, 1), color=C_GHOST, lw=2.0)
+seg(axL, (1, 0), (1, 1), color=C_GHOST, lw=1.0, ls=(0, (4, 4)))
+seg(axL, (0, 1), (1, 1), color=C_GHOST, lw=1.0, ls=(0, (4, 4)))
+arrow(axL, (0, 0), vec(1, 1), color=C_U, lw=3.0)
+dot(axL, vec(1, 1), C_U)
+txt(axL, vec(1, 0), "1 个横", color=C_GHOST, dx=0.05, dy=-0.28)
+txt(axL, vec(0, 1), "1 个竖", color=C_GHOST, dx=0.10, dy=0.22)
+txt(axL, vec(1, 1), "(1, 1)", color=C_U, dx=0.12, dy=0.22, fp=zh)
+txt(axL, (-1.2, 2.6), "旧尺子：横 (1,0)、竖 (0,1)", color=C_INK, fp=zh_sm)
+axL.set_title("1 个横 ＋ 1 个竖 ＝ (1,1)", fontproperties=zh, color=C_SOFT, fontsize=11, pad=6)
+
+axR = panel(fig, [0.53, 0.16, 0.44, 0.72], (-1.3, 4.3), (-1.3, 4.3), "横", "纵")
+a1, a2 = A_NEW @ vec(1, 0), A_NEW @ vec(0, 1)          # (2,1) 与 (1,2)：表的两列
+arrow(axR, (0, 0), a1, color=C_SUM, lw=2.8)
+arrow(axR, (0, 0), a2, color=C_V, lw=2.8)
+seg(axR, a1, a1 + a2, color=C_GHOST, lw=1.0, ls=(0, (4, 4)))
+seg(axR, a2, a1 + a2, color=C_GHOST, lw=1.0, ls=(0, (4, 4)))
+arrow(axR, (0, 0), a1 + a2, color=C_U, lw=3.0)
+dot(axR, a1 + a2, C_U)
+txt(axR, a1, "第一列 (2,1)：新的横", color=C_SUM, dx=0.22, dy=-0.62, ha="left")
+txt(axR, a2, "第二列 (1,2)：新的竖", color=C_V, dx=-0.18, dy=0.46, ha="right")
+txt(axR, a1 + a2, "(3, 3)", color=C_U, dx=0.14, dy=0.24, fp=zh)
+txt(axR, (-1.2, 4.0), "新尺子：横换成 (2,1)、竖换成 (1,2)", color=C_INK, fp=zh_sm)
+axR.set_title("还是 1 个 ＋ 1 个，只是尺子换了 ＝ (3,3)", fontproperties=zh, color=C_SOFT, fontsize=11, pad=6)
+
+fig.text(0.5, 0.015, "两根尺子换了一遍，构成那个「1 个 + 1 个」一个字没改——这就是同一个作用的第二种读法",
+         ha="center", fontproperties=zh, color=C_INK, fontsize=10.5)
+save(fig, "fig15-构成没变尺子换了.png")
+
+print("\n全部配图完成，共 15 张，输出目录：", OUT)
